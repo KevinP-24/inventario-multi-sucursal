@@ -12,6 +12,9 @@ frontend/.angular/
 frontend/dist/
 frontend/.env
 
+# Documentación interna
+docs/*.pdf
+
 # General
 .vscode/
 .DS_Store
