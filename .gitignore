@@ -1,0 +1,19 @@
+@"
+# Backend
+backend/.venv/
+backend/__pycache__/
+backend/.pytest_cache/
+backend/.env
+backend/*.pyc
+
+# Frontend
+frontend/node_modules/
+frontend/.angular/
+frontend/dist/
+frontend/.env
+
+# General
+.vscode/
+.DS_Store
+Thumbs.db
+"@ | Set-Content ".gitignore"
