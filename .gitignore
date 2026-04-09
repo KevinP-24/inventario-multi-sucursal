@@ -1,10 +1,13 @@
-@"
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
 # Backend
 backend/.venv/
-backend/__pycache__/
 backend/.pytest_cache/
 backend/.env
-backend/*.pyc
 
 # Frontend
 frontend/node_modules/
@@ -12,11 +15,10 @@ frontend/.angular/
 frontend/dist/
 frontend/.env
 
-# Documentación interna
+# Documentaci�n interna
 docs/*.pdf
 
 # General
 .vscode/
 .DS_Store
 Thumbs.db
-"@ | Set-Content ".gitignore"
