@@ -72,3 +72,17 @@ def actualizar_producto_con_validaciones(id_producto, datos):
 
     producto_guardado = guardar_producto_en_base_de_datos(producto)
     return convertir_producto_a_respuesta(producto_guardado), None
+
+
+def dar_baja_producto_con_validaciones(id_producto):
+    """Marca un producto como inactivo sin borrar su historial operativo."""
+    producto = consultar_producto_por_id_en_bd(id_producto)
+    if not producto:
+        return None, {"producto": "No existe un producto con ese id."}
+
+    if not producto.activo:
+        return None, {"producto": "El producto ya se encuentra inactivo."}
+
+    producto.activo = False
+    producto_guardado = guardar_producto_en_base_de_datos(producto)
+    return convertir_producto_a_respuesta(producto_guardado), None

@@ -21,6 +21,21 @@ def convertir_texto_a_fecha_hora(valor):
         return None
 
 
+def convertir_texto_a_fecha_hora_para_filtro(valor, es_fecha_hasta=False):
+    """Convierte filtros de fecha ISO; acepta YYYY-MM-DD o fecha/hora completa."""
+    if not valor:
+        return None
+
+    texto = str(valor).strip()
+    try:
+        if len(texto) == 10:
+            sufijo = "T23:59:59" if es_fecha_hasta else "T00:00:00"
+            texto = f"{texto}{sufijo}"
+        return datetime.fromisoformat(texto)
+    except ValueError:
+        return None
+
+
 def validar_datos_para_registrar_movimiento_inventario(datos):
     """Valida los datos minimos para dejar trazabilidad del inventario."""
     errores = {}

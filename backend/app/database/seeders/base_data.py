@@ -16,7 +16,7 @@ from app.modules.auth.usuario.repository import (
 )
 from app.modules.compras.proveedor.model import Proveedor
 from app.modules.compras.proveedor.repository import (
-    consultar_proveedor_por_nit_en_bd,
+    consultar_proveedor_por_documento_en_bd,
     guardar_proveedor_en_base_de_datos,
 )
 from app.modules.compras.proveedor.schema import PROVEEDORES_BASE
@@ -58,6 +58,18 @@ from app.modules.inventario.tipo_movimiento_inventario.repository import (
 from app.modules.inventario.tipo_movimiento_inventario.schema import (
     TIPOS_MOVIMIENTO_INVENTARIO_BASE,
 )
+from app.modules.transferencias.estado_transferencia.model import EstadoTransferencia
+from app.modules.transferencias.estado_transferencia.repository import (
+    consultar_estado_transferencia_por_nombre_en_bd,
+    guardar_estado_transferencia_en_base_de_datos,
+)
+from app.modules.transferencias.estado_transferencia.schema import ESTADOS_TRANSFERENCIA_BASE
+from app.modules.ventas.tipo_documento.model import TipoDocumento
+from app.modules.ventas.tipo_documento.repository import (
+    consultar_tipo_documento_por_codigo_en_bd,
+    guardar_tipo_documento_en_base_de_datos,
+)
+from app.modules.ventas.tipo_documento.schema import TIPOS_DOCUMENTO_BASE
 from app.modules.inventario.unidad_medida.model import UnidadMedida
 from app.modules.inventario.unidad_medida.repository import (
     consultar_unidad_medida_por_simbolo_en_bd,
@@ -293,15 +305,59 @@ def crear_tipos_movimiento_inventario_base_si_no_existen():
     return tipos_listos
 
 
+def crear_estados_transferencia_base_si_no_existen():
+    """Crea el catalogo normalizado del ciclo de transferencias."""
+    estados_listos = []
+
+    for datos_estado in ESTADOS_TRANSFERENCIA_BASE:
+        estado = consultar_estado_transferencia_por_nombre_en_bd(datos_estado["nombre"])
+
+        if not estado:
+            estado = EstadoTransferencia(**datos_estado)
+            guardar_estado_transferencia_en_base_de_datos(estado)
+
+        estados_listos.append(estado)
+
+    return estados_listos
+
+
+def crear_tipos_documento_base_si_no_existen():
+    """Crea tipos de documento colombianos para clientes."""
+    tipos_listos = []
+
+    for datos_tipo in TIPOS_DOCUMENTO_BASE:
+        tipo = consultar_tipo_documento_por_codigo_en_bd(datos_tipo["codigo"])
+
+        if not tipo:
+            tipo = TipoDocumento(**datos_tipo, activo=True)
+            guardar_tipo_documento_en_base_de_datos(tipo)
+
+        tipos_listos.append(tipo)
+
+    return tipos_listos
+
+
 def crear_proveedores_base_si_no_existen():
     """Crea proveedores demo para preparar el modulo de compras."""
     proveedores_listos = []
 
     for datos_proveedor in PROVEEDORES_BASE:
-        proveedor = consultar_proveedor_por_nit_en_bd(datos_proveedor["nit"])
+        numero_documento = datos_proveedor["numero_documento"]
+        proveedor = consultar_proveedor_por_documento_en_bd(numero_documento)
 
         if not proveedor:
-            proveedor = Proveedor(**datos_proveedor)
+            tipo_documento = consultar_tipo_documento_por_codigo_en_bd(
+                datos_proveedor["codigo_tipo_documento"],
+            )
+            proveedor = Proveedor(
+                id_tipo_documento=tipo_documento.id_tipo_documento,
+                numero_documento=numero_documento,
+                nombre=datos_proveedor["nombre"],
+                correo=datos_proveedor.get("correo"),
+                telefono=datos_proveedor.get("telefono"),
+                direccion=datos_proveedor.get("direccion"),
+                activo=True,
+            )
             guardar_proveedor_en_base_de_datos(proveedor)
 
         proveedores_listos.append(proveedor)
@@ -411,6 +467,8 @@ def ejecutar_seed_datos_base():
     producto_unidades = crear_producto_unidades_base_si_no_existen()
     inventario_sucursal = crear_inventario_sucursal_base_si_no_existe()
     tipos_movimiento_inventario = crear_tipos_movimiento_inventario_base_si_no_existen()
+    estados_transferencia = crear_estados_transferencia_base_si_no_existen()
+    tipos_documento = crear_tipos_documento_base_si_no_existen()
     proveedores = crear_proveedores_base_si_no_existen()
     listas_precio = crear_listas_precio_base_si_no_existen()
     precios_producto = crear_precios_producto_base_si_no_existen()
@@ -427,6 +485,8 @@ def ejecutar_seed_datos_base():
         "producto_unidades": producto_unidades,
         "inventario_sucursal": inventario_sucursal,
         "tipos_movimiento_inventario": tipos_movimiento_inventario,
+        "estados_transferencia": estados_transferencia,
+        "tipos_documento": tipos_documento,
         "proveedores": proveedores,
         "listas_precio": listas_precio,
         "precios_producto": precios_producto,

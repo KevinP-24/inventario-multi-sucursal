@@ -4,6 +4,7 @@ from app.modules.compras.orden_compra.service import (
     crear_orden_compra_con_validaciones,
     listar_ordenes_compra_para_respuesta,
     obtener_orden_compra_para_respuesta,
+    recibir_orden_compra_con_validaciones,
 )
 
 ordenes_compra_bp = Blueprint("ordenes_compra", __name__)
@@ -35,3 +36,25 @@ def crear_orden_compra_endpoint():
         return jsonify({"message": "No se pudo crear la orden de compra.", "errors": errores}), 400
 
     return jsonify({"message": "Orden de compra creada correctamente.", "data": orden}), 201
+
+
+@ordenes_compra_bp.post("/recibir_orden_compra/<int:id_orden_compra>")
+def recibir_orden_compra_endpoint(id_orden_compra):
+    """Recibe una orden de compra y suma sus productos al inventario."""
+    datos = request.get_json(silent=True) or {}
+    orden, movimientos, errores = recibir_orden_compra_con_validaciones(id_orden_compra, datos)
+
+    if errores:
+        codigo_estado = 404 if "orden_compra" in errores else 400
+        return jsonify({
+            "message": "No se pudo recibir la orden de compra.",
+            "errors": errores,
+        }), codigo_estado
+
+    return jsonify({
+        "message": "Orden de compra recibida correctamente.",
+        "data": {
+            "orden_compra": orden,
+            "movimientos_inventario": movimientos,
+        },
+    }), 200

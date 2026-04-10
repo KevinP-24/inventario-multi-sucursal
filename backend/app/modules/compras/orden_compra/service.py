@@ -1,3 +1,6 @@
+from datetime import date
+
+from app.extensions import db
 from app.modules.auth.usuario.repository import consultar_usuario_por_id_en_bd
 from app.modules.compras.detalle_orden_compra.model import DetalleOrdenCompra
 from app.modules.compras.orden_compra.model import OrdenCompra
@@ -11,10 +14,19 @@ from app.modules.compras.orden_compra.schema import (
     convertir_texto_a_fecha,
     convertir_valor_a_decimal,
     validar_datos_para_crear_orden_compra,
+    validar_datos_para_recibir_orden_compra,
 )
 from app.modules.compras.proveedor.repository import consultar_proveedor_por_id_en_bd
+from app.modules.inventario.inventario_sucursal.model import InventarioSucursal
+from app.modules.inventario.inventario_sucursal.repository import (
+    consultar_inventario_por_sucursal_y_producto_en_bd,
+)
+from app.modules.inventario.movimiento_inventario.model import MovimientoInventario
 from app.modules.inventario.producto.repository import consultar_producto_por_id_en_bd
 from app.modules.inventario.producto_unidad.repository import consultar_producto_unidad_por_id_en_bd
+from app.modules.inventario.tipo_movimiento_inventario.repository import (
+    consultar_tipo_movimiento_inventario_por_nombre_en_bd,
+)
 from app.modules.sucursales.sucursal.repository import consultar_sucursal_por_id_en_bd
 
 
@@ -60,6 +72,118 @@ def crear_orden_compra_con_validaciones(datos):
 
     orden_guardada = guardar_orden_compra_en_base_de_datos(orden)
     return convertir_orden_compra_a_respuesta(orden_guardada), None
+
+
+def recibir_orden_compra_con_validaciones(id_orden_compra, datos):
+    """Recibe una orden y registra el ingreso de sus productos al inventario."""
+    errores = validar_datos_para_recibir_orden_compra(datos)
+    if errores:
+        return None, None, errores
+
+    orden = consultar_orden_compra_por_id_en_bd(id_orden_compra)
+    if not orden:
+        return None, None, {"orden_compra": "No existe una orden de compra con ese id."}
+
+    if orden.estado != "CREADA":
+        return None, None, {
+            "estado": "La orden solo puede recibirse cuando esta en estado CREADA."
+        }
+
+    id_usuario_recepcion = datos["id_usuario_recepcion"]
+    if not consultar_usuario_por_id_en_bd(id_usuario_recepcion):
+        return None, None, {"id_usuario_recepcion": "No existe usuario con ese id."}
+
+    tipo_entrada = consultar_tipo_movimiento_inventario_por_nombre_en_bd("ENTRADA")
+    if not tipo_entrada:
+        return None, None, {
+            "tipo_movimiento": "No existe el tipo de movimiento ENTRADA."
+        }
+
+    if not orden.detalles:
+        return None, None, {"detalles": "La orden no tiene productos para recibir."}
+
+    try:
+        movimientos = registrar_entrada_de_compra_en_inventario(
+            orden,
+            id_usuario_recepcion,
+            tipo_entrada.id_tipo_movimiento,
+        )
+
+        orden.estado = "RECIBIDA"
+        orden.fecha_recepcion = date.today()
+        orden.id_usuario_recepcion = id_usuario_recepcion
+
+        db.session.add(orden)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    return (
+        convertir_orden_compra_a_respuesta(orden),
+        [movimiento.convertir_a_diccionario() for movimiento in movimientos],
+        None,
+    )
+
+
+def registrar_entrada_de_compra_en_inventario(orden, id_usuario_recepcion, id_tipo_movimiento):
+    """Suma el stock comprado y deja un movimiento por cada detalle recibido."""
+    movimientos = []
+
+    for detalle in orden.detalles:
+        inventario = consultar_inventario_por_sucursal_y_producto_en_bd(
+            orden.id_sucursal,
+            detalle.id_producto,
+        )
+
+        if not inventario:
+            inventario = InventarioSucursal(
+                id_sucursal=orden.id_sucursal,
+                id_producto=detalle.id_producto,
+                cantidad_actual=0,
+                costo_promedio=detalle.precio_unitario,
+            )
+
+        inventario.costo_promedio = calcular_costo_promedio_ponderado(
+            inventario.cantidad_actual,
+            inventario.costo_promedio,
+            detalle.cantidad,
+            detalle.precio_unitario,
+        )
+        inventario.cantidad_actual += detalle.cantidad
+        db.session.add(inventario)
+        db.session.flush()
+
+        movimiento = MovimientoInventario(
+            id_inventario=inventario.id_inventario,
+            id_usuario=id_usuario_recepcion,
+            id_tipo_movimiento=id_tipo_movimiento,
+            motivo="Recepcion de orden de compra",
+            cantidad=detalle.cantidad,
+            modulo_origen="COMPRA",
+            id_origen=orden.id_orden_compra,
+        )
+        db.session.add(movimiento)
+        movimientos.append(movimiento)
+
+    db.session.flush()
+    return movimientos
+
+
+def calcular_costo_promedio_ponderado(
+    cantidad_actual,
+    costo_promedio_actual,
+    cantidad_comprada,
+    costo_unitario_compra,
+):
+    """Calcula el nuevo costo promedio al recibir mercancia comprada."""
+    cantidad_total = cantidad_actual + cantidad_comprada
+    if cantidad_total <= 0:
+        return costo_unitario_compra
+
+    valor_actual = cantidad_actual * costo_promedio_actual
+    valor_compra = cantidad_comprada * costo_unitario_compra
+    return (valor_actual + valor_compra) / cantidad_total
 
 
 def validar_relaciones_de_orden_compra(datos):

@@ -51,6 +51,16 @@ def validar_datos_para_crear_orden_compra(datos):
     return errores
 
 
+def validar_datos_para_recibir_orden_compra(datos):
+    """Valida los datos minimos para recibir una orden de compra."""
+    errores = {}
+
+    if not datos.get("id_usuario_recepcion"):
+        errores["id_usuario_recepcion"] = "El usuario que recibe la orden es obligatorio."
+
+    return errores
+
+
 def validar_detalle_orden_compra(detalle, posicion, errores):
     """Valida una linea de detalle de la orden de compra."""
     prefijo = f"detalle_{posicion}"

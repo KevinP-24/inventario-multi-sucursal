@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from app.modules.inventario.movimiento_inventario.service import (
+    filtrar_movimientos_inventario_para_respuesta,
     listar_movimientos_inventario_para_respuesta,
     listar_movimientos_por_inventario_para_respuesta,
     obtener_movimiento_inventario_para_respuesta,
@@ -14,6 +15,17 @@ movimientos_inventario_bp = Blueprint("movimientos_inventario", __name__)
 def listar_movimientos_inventario_endpoint():
     """Lista todo el historial de inventario."""
     return jsonify({"data": listar_movimientos_inventario_para_respuesta()}), 200
+
+
+@movimientos_inventario_bp.get("/filtrar_movimientos_inventario")
+def filtrar_movimientos_inventario_endpoint():
+    """Filtra movimientos por sucursal, producto, origen, tipo o fechas."""
+    movimientos, errores = filtrar_movimientos_inventario_para_respuesta(request.args)
+
+    if errores:
+        return jsonify({"message": "No se pudo filtrar el historial.", "errors": errores}), 400
+
+    return jsonify({"data": movimientos}), 200
 
 
 @movimientos_inventario_bp.get("/obtener_movimiento_inventario/<int:id_movimiento>")

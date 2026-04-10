@@ -2,8 +2,8 @@ def validar_datos_para_guardar_cliente(datos):
     """Valida lo minimo para crear o actualizar un cliente."""
     errores = {}
 
-    if not (datos.get("tipo_documento") or "").strip():
-        errores["tipo_documento"] = "El tipo de documento es obligatorio."
+    if not datos.get("id_tipo_documento"):
+        errores["id_tipo_documento"] = "El tipo de documento es obligatorio."
 
     if not (datos.get("numero_documento") or "").strip():
         errores["numero_documento"] = "El numero de documento es obligatorio."

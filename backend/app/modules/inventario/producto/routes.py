@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request
 from app.modules.inventario.producto.service import (
     actualizar_producto_con_validaciones,
     crear_producto_con_validaciones,
+    dar_baja_producto_con_validaciones,
     listar_productos_para_respuesta,
     obtener_producto_para_respuesta,
 )
@@ -48,3 +49,14 @@ def actualizar_producto_endpoint(id_producto):
         return jsonify({"message": "No se pudo actualizar el producto.", "errors": errores}), 400
 
     return jsonify({"message": "Producto actualizado correctamente.", "data": producto}), 200
+
+
+@productos_bp.delete("/eliminar_producto/<int:id_producto>")
+def eliminar_producto_endpoint(id_producto):
+    """Da de baja un producto sin eliminar su trazabilidad historica."""
+    producto, errores = dar_baja_producto_con_validaciones(id_producto)
+
+    if errores:
+        return jsonify({"message": "No se pudo dar de baja el producto.", "errors": errores}), 400
+
+    return jsonify({"message": "Producto dado de baja correctamente.", "data": producto}), 200

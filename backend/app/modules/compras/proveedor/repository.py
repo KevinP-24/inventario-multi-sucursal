@@ -12,9 +12,9 @@ def consultar_proveedor_por_id_en_bd(id_proveedor):
     return Proveedor.query.get(id_proveedor)
 
 
-def consultar_proveedor_por_nit_en_bd(nit):
-    """Consulta en PostgreSQL si ya existe un proveedor con ese NIT."""
-    return Proveedor.query.filter_by(nit=nit).first()
+def consultar_proveedor_por_documento_en_bd(numero_documento):
+    """Consulta en PostgreSQL si ya existe un proveedor con ese documento."""
+    return Proveedor.query.filter_by(numero_documento=numero_documento).first()
 
 
 def guardar_proveedor_en_base_de_datos(proveedor):

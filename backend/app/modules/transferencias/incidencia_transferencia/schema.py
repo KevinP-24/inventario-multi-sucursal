@@ -1,1 +1,3 @@
-"""Schemas de entrada y salida de incidencia_transferencia."""
+def convertir_incidencia_transferencia_a_respuesta(incidencia):
+    """Convierte una incidencia SQLAlchemy a diccionario."""
+    return incidencia.convertir_a_diccionario()

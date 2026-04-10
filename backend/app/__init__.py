@@ -19,7 +19,12 @@ from app.modules.inventario import (
 )
 from app.modules.logistica import rutas_logistica_bp, transportistas_bp
 from app.modules.sucursales import sucursales_bp
-from app.modules.ventas import clientes_bp
+from app.modules.transferencias import (
+    detalles_transferencia_bp,
+    estados_transferencia_bp,
+    transferencias_bp,
+)
+from app.modules.ventas import clientes_bp, detalles_venta_bp, tipos_documento_bp, ventas_bp
 from app.database.seeders import seed_cli
 
 # Cargamos los modelos que ya existen para que las migraciones los detecten.
@@ -45,6 +50,18 @@ def create_app():
     app.register_blueprint(usuarios_bp, url_prefix="/api/v1/usuarios")
     app.register_blueprint(sucursales_bp, url_prefix="/api/v1/sucursales")
     app.register_blueprint(clientes_bp, url_prefix="/api/v1/clientes")
+    app.register_blueprint(tipos_documento_bp, url_prefix="/api/v1/tipos-documento")
+    app.register_blueprint(ventas_bp, url_prefix="/api/v1/ventas")
+    app.register_blueprint(detalles_venta_bp, url_prefix="/api/v1/detalles-venta")
+    app.register_blueprint(transferencias_bp, url_prefix="/api/v1/transferencias")
+    app.register_blueprint(
+        detalles_transferencia_bp,
+        url_prefix="/api/v1/detalles-transferencia",
+    )
+    app.register_blueprint(
+        estados_transferencia_bp,
+        url_prefix="/api/v1/estados-transferencia",
+    )
     app.register_blueprint(unidades_medida_bp, url_prefix="/api/v1/unidades-medida")
     app.register_blueprint(productos_bp, url_prefix="/api/v1/productos")
     app.register_blueprint(producto_unidades_bp, url_prefix="/api/v1/producto-unidades")

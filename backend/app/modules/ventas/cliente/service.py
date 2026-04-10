@@ -9,6 +9,9 @@ from app.modules.ventas.cliente.schema import (
     convertir_cliente_a_respuesta,
     validar_datos_para_guardar_cliente,
 )
+from app.modules.ventas.tipo_documento.repository import (
+    consultar_tipo_documento_por_id_en_bd,
+)
 
 
 def listar_clientes_para_respuesta():
@@ -36,8 +39,12 @@ def crear_cliente_con_validaciones(datos):
     if consultar_cliente_por_documento_en_bd(numero_documento):
         return None, {"numero_documento": "Ya existe un cliente con ese documento."}
 
+    tipo_documento, error_tipo_documento = resolver_tipo_documento_cliente(datos)
+    if error_tipo_documento:
+        return None, error_tipo_documento
+
     cliente = Cliente(
-        tipo_documento=datos["tipo_documento"].strip(),
+        id_tipo_documento=tipo_documento.id_tipo_documento,
         numero_documento=numero_documento,
         nombre=datos["nombre"].strip(),
         correo=(datos.get("correo") or "").strip() or None,
@@ -64,7 +71,11 @@ def actualizar_cliente_con_validaciones(id_cliente, datos):
     if cliente_existente and cliente_existente.id_cliente != cliente.id_cliente:
         return None, {"numero_documento": "Ya existe otro cliente con ese documento."}
 
-    cliente.tipo_documento = datos["tipo_documento"].strip()
+    tipo_documento, error_tipo_documento = resolver_tipo_documento_cliente(datos)
+    if error_tipo_documento:
+        return None, error_tipo_documento
+
+    cliente.id_tipo_documento = tipo_documento.id_tipo_documento
     cliente.numero_documento = numero_documento
     cliente.nombre = datos["nombre"].strip()
     cliente.correo = (datos.get("correo") or "").strip() or None
@@ -73,3 +84,15 @@ def actualizar_cliente_con_validaciones(id_cliente, datos):
 
     cliente_guardado = guardar_cliente_en_base_de_datos(cliente)
     return convertir_cliente_a_respuesta(cliente_guardado), None
+
+
+def resolver_tipo_documento_cliente(datos):
+    """Resuelve el tipo de documento del cliente por FK."""
+    tipo_documento = consultar_tipo_documento_por_id_en_bd(datos["id_tipo_documento"])
+    if not tipo_documento:
+        return None, {"id_tipo_documento": "No existe un tipo de documento con ese id."}
+
+    if not tipo_documento.activo:
+        return None, {"id_tipo_documento": "El tipo de documento no esta activo."}
+
+    return tipo_documento, None

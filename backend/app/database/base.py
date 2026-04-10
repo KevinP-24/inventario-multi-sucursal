@@ -21,14 +21,26 @@ from app.modules.inventario.tipo_movimiento_inventario.model import TipoMovimien
 from app.modules.inventario.unidad_medida.model import UnidadMedida
 from app.modules.logistica.ruta_logistica.model import RutaLogistica
 from app.modules.logistica.transportista.model import Transportista
+from app.modules.logistica.envio_transferencia.model import EnvioTransferencia
 from app.modules.sucursales.sucursal.model import Sucursal
+from app.modules.transferencias.detalle_transferencia.model import DetalleTransferencia
+from app.modules.transferencias.estado_transferencia.model import EstadoTransferencia
+from app.modules.transferencias.incidencia_transferencia.model import IncidenciaTransferencia
+from app.modules.transferencias.recepcion_transferencia.model import RecepcionTransferencia
+from app.modules.transferencias.transferencia.model import Transferencia
 from app.modules.ventas.cliente.model import Cliente
+from app.modules.ventas.detalle_venta.model import DetalleVenta
+from app.modules.ventas.tipo_documento.model import TipoDocumento
+from app.modules.ventas.venta.model import Venta
 
 __all__ = [
     "Rol",
     "Usuario",
     "Sucursal",
     "Cliente",
+    "TipoDocumento",
+    "Venta",
+    "DetalleVenta",
     "UnidadMedida",
     "Producto",
     "ProductoUnidad",
@@ -42,5 +54,11 @@ __all__ = [
     "PrecioProducto",
     "Transportista",
     "RutaLogistica",
+    "Transferencia",
+    "DetalleTransferencia",
+    "EstadoTransferencia",
+    "EnvioTransferencia",
+    "RecepcionTransferencia",
+    "IncidenciaTransferencia",
     "ParametroSistema",
 ]

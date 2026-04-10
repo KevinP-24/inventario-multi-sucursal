@@ -1,5 +1,6 @@
 from app.extensions import db
 from app.modules.inventario.inventario_sucursal.model import InventarioSucursal
+from app.modules.inventario.producto.model import Producto
 
 
 def consultar_todo_el_inventario_sucursal_en_bd():
@@ -22,6 +23,25 @@ def consultar_inventario_por_sucursal_y_producto_en_bd(id_sucursal, id_producto)
         id_sucursal=id_sucursal,
         id_producto=id_producto,
     ).first()
+
+
+def consultar_alertas_stock_bajo_en_bd(id_sucursal=None):
+    """Consulta productos cuyo stock actual esta igual o por debajo del minimo."""
+    consulta = (
+        InventarioSucursal.query
+        .join(Producto, InventarioSucursal.id_producto == Producto.id_producto)
+        .filter(Producto.activo.is_(True))
+        .filter(InventarioSucursal.cantidad_actual <= Producto.stock_minimo)
+    )
+
+    if id_sucursal:
+        consulta = consulta.filter(InventarioSucursal.id_sucursal == id_sucursal)
+
+    return (
+        consulta
+        .order_by(InventarioSucursal.id_sucursal.asc(), Producto.nombre.asc())
+        .all()
+    )
 
 
 def guardar_inventario_sucursal_en_base_de_datos(inventario):
