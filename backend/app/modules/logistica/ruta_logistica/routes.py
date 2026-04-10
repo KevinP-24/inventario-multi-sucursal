@@ -2,7 +2,9 @@ from flask import Blueprint, jsonify, request
 
 from app.modules.logistica.ruta_logistica.service import (
     actualizar_ruta_logistica_con_validaciones,
+    clasificar_rutas_logistica_para_respuesta,
     crear_ruta_logistica_con_validaciones,
+    generar_reporte_cumplimiento_logistico_para_respuesta,
     listar_rutas_logistica_para_respuesta,
     obtener_ruta_logistica_para_respuesta,
 )
@@ -14,6 +16,26 @@ rutas_logistica_bp = Blueprint("rutas_logistica", __name__)
 def listar_rutas_logistica_endpoint():
     """Lista todas las rutas logisticas."""
     return jsonify({"data": listar_rutas_logistica_para_respuesta()}), 200
+
+
+@rutas_logistica_bp.get("/clasificar_rutas_logistica")
+def clasificar_rutas_logistica_endpoint():
+    """Lista rutas clasificadas por prioridad, costo o tiempo."""
+    rutas, errores = clasificar_rutas_logistica_para_respuesta(request.args.get("criterio"))
+
+    if errores:
+        return jsonify({"message": "No se pudieron clasificar las rutas.", "errors": errores}), 400
+
+    return jsonify({"data": rutas}), 200
+
+
+@rutas_logistica_bp.get("/reporte_cumplimiento_logistico")
+def reporte_cumplimiento_logistico_endpoint():
+    """Genera reporte de cumplimiento logistico por sucursal y ruta."""
+    id_sucursal = request.args.get("id_sucursal", type=int)
+    id_ruta = request.args.get("id_ruta", type=int)
+    reporte = generar_reporte_cumplimiento_logistico_para_respuesta(id_sucursal, id_ruta)
+    return jsonify({"data": reporte}), 200
 
 
 @rutas_logistica_bp.get("/obtener_ruta_logistica/<int:id_ruta>")

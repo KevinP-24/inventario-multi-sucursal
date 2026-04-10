@@ -13,7 +13,13 @@ backend/.env
 frontend/node_modules/
 frontend/.angular/
 frontend/dist/
+frontend/tmp/
+frontend/out-tsc/
+frontend/bazel-out/
+frontend/coverage/
 frontend/.env
+npm-debug.log
+yarn-error.log
 
 # Documentaci�n interna
 docs/*.pdf

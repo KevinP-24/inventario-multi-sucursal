@@ -61,6 +61,36 @@ def validar_datos_para_recibir_orden_compra(datos):
     return errores
 
 
+def construir_filtros_historial_compras(parametros):
+    """Convierte query params en filtros tipados para el historico de compras."""
+    errores = {}
+    filtros = {
+        "id_proveedor": parametros.get("id_proveedor", type=int),
+        "id_producto": parametros.get("id_producto", type=int),
+        "id_sucursal": parametros.get("id_sucursal", type=int),
+    }
+
+    estado = (parametros.get("estado") or "").strip().upper()
+    if estado:
+        if estado not in ESTADOS_ORDEN_COMPRA:
+            errores["estado"] = "El estado debe ser CREADA, RECIBIDA o ANULADA."
+        else:
+            filtros["estado"] = estado
+
+    fecha_desde_texto = parametros.get("fecha_desde")
+    fecha_hasta_texto = parametros.get("fecha_hasta")
+    filtros["fecha_desde"] = convertir_texto_a_fecha(fecha_desde_texto) if fecha_desde_texto else None
+    filtros["fecha_hasta"] = convertir_texto_a_fecha(fecha_hasta_texto) if fecha_hasta_texto else None
+
+    if fecha_desde_texto and filtros["fecha_desde"] is None:
+        errores["fecha_desde"] = "La fecha desde debe tener formato YYYY-MM-DD."
+
+    if fecha_hasta_texto and filtros["fecha_hasta"] is None:
+        errores["fecha_hasta"] = "La fecha hasta debe tener formato YYYY-MM-DD."
+
+    return filtros, errores
+
+
 def validar_detalle_orden_compra(detalle, posicion, errores):
     """Valida una linea de detalle de la orden de compra."""
     prefijo = f"detalle_{posicion}"

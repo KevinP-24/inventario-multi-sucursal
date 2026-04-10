@@ -91,3 +91,17 @@ def actualizar_producto_unidad_con_validaciones(id_producto_unidad, datos):
 
     conversion_guardada = guardar_producto_unidad_en_base_de_datos(conversion)
     return convertir_producto_unidad_a_respuesta(conversion_guardada), None
+
+
+def dar_baja_producto_unidad_con_validaciones(id_producto_unidad):
+    """Marca una conversion producto-unidad como inactiva sin borrar historial."""
+    conversion = consultar_producto_unidad_por_id_en_bd(id_producto_unidad)
+    if not conversion:
+        return None, {"producto_unidad": "No existe una conversion con ese id."}
+
+    if not conversion.activo:
+        return None, {"producto_unidad": "La conversion ya se encuentra inactiva."}
+
+    conversion.activo = False
+    conversion_guardada = guardar_producto_unidad_en_base_de_datos(conversion)
+    return convertir_producto_unidad_a_respuesta(conversion_guardada), None

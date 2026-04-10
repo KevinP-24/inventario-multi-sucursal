@@ -7,9 +7,11 @@ from app.modules.compras.orden_compra.model import OrdenCompra
 from app.modules.compras.orden_compra.repository import (
     consultar_orden_compra_por_id_en_bd,
     consultar_todas_las_ordenes_compra_en_bd,
+    filtrar_ordenes_compra_en_bd,
     guardar_orden_compra_en_base_de_datos,
 )
 from app.modules.compras.orden_compra.schema import (
+    construir_filtros_historial_compras,
     convertir_orden_compra_a_respuesta,
     convertir_texto_a_fecha,
     convertir_valor_a_decimal,
@@ -45,6 +47,16 @@ def obtener_orden_compra_para_respuesta(id_orden_compra):
     return convertir_orden_compra_a_respuesta(orden)
 
 
+def filtrar_historial_compras_para_respuesta(parametros):
+    """Consulta compras historicas por proveedor, producto, sucursal, estado o fechas."""
+    filtros, errores = construir_filtros_historial_compras(parametros)
+    if errores:
+        return None, errores
+
+    ordenes = filtrar_ordenes_compra_en_bd(filtros)
+    return [convertir_orden_compra_a_respuesta(orden) for orden in ordenes], None
+
+
 def crear_orden_compra_con_validaciones(datos):
     """Crea una orden con detalles y calcula los totales automaticamente."""
     errores = validar_datos_para_crear_orden_compra(datos)
@@ -70,6 +82,23 @@ def crear_orden_compra_con_validaciones(datos):
         detalles=detalles,
     )
 
+    orden_guardada = guardar_orden_compra_en_base_de_datos(orden)
+    return convertir_orden_compra_a_respuesta(orden_guardada), None
+
+
+def anular_orden_compra_con_validaciones(id_orden_compra):
+    """Anula una orden registrada si todavia no fue recibida."""
+    orden = consultar_orden_compra_por_id_en_bd(id_orden_compra)
+    if not orden:
+        return None, {"orden_compra": "No existe una orden de compra con ese id."}
+
+    if orden.estado == "RECIBIDA":
+        return None, {"estado": "No se puede anular una orden de compra ya recibida."}
+
+    if orden.estado == "ANULADA":
+        return None, {"estado": "La orden de compra ya se encuentra anulada."}
+
+    orden.estado = "ANULADA"
     orden_guardada = guardar_orden_compra_en_base_de_datos(orden)
     return convertir_orden_compra_a_respuesta(orden_guardada), None
 

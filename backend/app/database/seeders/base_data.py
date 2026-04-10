@@ -83,6 +83,14 @@ from app.modules.sucursales.sucursal.repository import (
 )
 from app.modules.sucursales.sucursal.schema import SUCURSALES_BASE
 from app.modules.logistica.ruta_logistica.model import RutaLogistica
+from app.modules.logistica.prioridad_ruta_logistica.model import PrioridadRutaLogistica
+from app.modules.logistica.prioridad_ruta_logistica.repository import (
+    consultar_prioridad_ruta_logistica_por_nombre_en_bd,
+    guardar_prioridad_ruta_logistica_en_base_de_datos,
+)
+from app.modules.logistica.prioridad_ruta_logistica.schema import (
+    PRIORIDADES_RUTA_LOGISTICA_BASE,
+)
 from app.modules.logistica.ruta_logistica.repository import (
     consultar_ruta_logistica_por_nombre_en_bd,
     guardar_ruta_logistica_en_base_de_datos,
@@ -425,15 +433,44 @@ def crear_transportistas_base_si_no_existen():
     return transportistas_listos
 
 
+def crear_prioridades_ruta_logistica_base_si_no_existen():
+    """Crea el catalogo base de prioridades de rutas logisticas."""
+    prioridades_listas = []
+
+    for datos_prioridad in PRIORIDADES_RUTA_LOGISTICA_BASE:
+        prioridad = consultar_prioridad_ruta_logistica_por_nombre_en_bd(
+            datos_prioridad["nombre"],
+        )
+
+        if not prioridad:
+            prioridad = PrioridadRutaLogistica(**datos_prioridad)
+            guardar_prioridad_ruta_logistica_en_base_de_datos(prioridad)
+
+        prioridades_listas.append(prioridad)
+
+    return prioridades_listas
+
+
 def crear_rutas_logistica_base_si_no_existen():
     """Crea rutas logisticas demo entre sucursales reales."""
     rutas_listas = []
 
     for datos_ruta in RUTAS_LOGISTICA_BASE:
         ruta = consultar_ruta_logistica_por_nombre_en_bd(datos_ruta["nombre_ruta"])
+        prioridad = consultar_prioridad_ruta_logistica_por_nombre_en_bd(
+            datos_ruta.get("prioridad", "NORMAL"),
+        )
 
         if not ruta:
-            ruta = RutaLogistica(**datos_ruta)
+            ruta = RutaLogistica(
+                nombre_ruta=datos_ruta["nombre_ruta"],
+                id_prioridad_ruta=prioridad.id_prioridad_ruta,
+                costo_estimado=datos_ruta["costo_estimado"],
+                tiempo_estimado=datos_ruta.get("tiempo_estimado"),
+            )
+            guardar_ruta_logistica_en_base_de_datos(ruta)
+        elif ruta.id_prioridad_ruta != prioridad.id_prioridad_ruta:
+            ruta.id_prioridad_ruta = prioridad.id_prioridad_ruta
             guardar_ruta_logistica_en_base_de_datos(ruta)
 
         rutas_listas.append(ruta)
@@ -473,6 +510,7 @@ def ejecutar_seed_datos_base():
     listas_precio = crear_listas_precio_base_si_no_existen()
     precios_producto = crear_precios_producto_base_si_no_existen()
     transportistas = crear_transportistas_base_si_no_existen()
+    prioridades_ruta_logistica = crear_prioridades_ruta_logistica_base_si_no_existen()
     rutas_logistica = crear_rutas_logistica_base_si_no_existen()
     parametros_sistema = crear_parametros_sistema_base_si_no_existen()
 
@@ -491,6 +529,7 @@ def ejecutar_seed_datos_base():
         "listas_precio": listas_precio,
         "precios_producto": precios_producto,
         "transportistas": transportistas,
+        "prioridades_ruta_logistica": prioridades_ruta_logistica,
         "rutas_logistica": rutas_logistica,
         "parametros_sistema": parametros_sistema,
     }

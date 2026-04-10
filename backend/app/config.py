@@ -22,7 +22,10 @@ def _build_database_url():
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "jwt-dev-secret")
+    JWT_SECRET_KEY = os.getenv(
+        "JWT_SECRET_KEY",
+        "dev-jwt-secret-key-change-me-32-chars-min",
+    )
     SQLALCHEMY_DATABASE_URI = _build_database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JSON_SORT_KEYS = False

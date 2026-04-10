@@ -26,5 +26,8 @@ def seed_datos_base_command():
     click.echo(f"Listas de precio listas: {len(resultado['listas_precio'])}")
     click.echo(f"Precios por producto listos: {len(resultado['precios_producto'])}")
     click.echo(f"Transportistas listos: {len(resultado['transportistas'])}")
+    click.echo(
+        f"Prioridades de ruta logisticas listas: {len(resultado['prioridades_ruta_logistica'])}"
+    )
     click.echo(f"Rutas logisticas listas: {len(resultado['rutas_logistica'])}")
     click.echo(f"Parametros del sistema listos: {len(resultado['parametros_sistema'])}")

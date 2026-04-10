@@ -5,8 +5,10 @@ from app.config import config_by_name
 from app.extensions import db, migrate, jwt, cors
 from app.api.health import health_bp
 from app.modules.admin import parametros_sistema_bp
-from app.modules.auth import roles_bp, usuarios_bp
+from app.common.decorators import proteger_api_con_jwt
+from app.modules.auth import auth_bp, roles_bp, usuarios_bp
 from app.modules.compras import detalles_orden_compra_bp, ordenes_compra_bp, proveedores_bp
+from app.modules.dashboard import dashboard_bp
 from app.modules.inventario import (
     inventario_sucursal_bp,
     listas_precio_bp,
@@ -17,7 +19,12 @@ from app.modules.inventario import (
     tipos_movimiento_inventario_bp,
     unidades_medida_bp,
 )
-from app.modules.logistica import rutas_logistica_bp, transportistas_bp
+from app.modules.logistica import (
+    prioridades_ruta_logistica_bp,
+    rutas_logistica_bp,
+    transportistas_bp,
+)
+from app.modules.reportes import reportes_bp
 from app.modules.sucursales import sucursales_bp
 from app.modules.transferencias import (
     detalles_transferencia_bp,
@@ -46,6 +53,7 @@ def create_app():
     cors.init_app(app)
 
     app.register_blueprint(health_bp, url_prefix="/api/v1/health")
+    app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(roles_bp, url_prefix="/api/v1/roles")
     app.register_blueprint(usuarios_bp, url_prefix="/api/v1/usuarios")
     app.register_blueprint(sucursales_bp, url_prefix="/api/v1/sucursales")
@@ -75,13 +83,20 @@ def create_app():
     app.register_blueprint(listas_precio_bp, url_prefix="/api/v1/listas-precio")
     app.register_blueprint(precios_producto_bp, url_prefix="/api/v1/precios-producto")
     app.register_blueprint(transportistas_bp, url_prefix="/api/v1/transportistas")
+    app.register_blueprint(
+        prioridades_ruta_logistica_bp,
+        url_prefix="/api/v1/prioridades-ruta-logistica",
+    )
     app.register_blueprint(rutas_logistica_bp, url_prefix="/api/v1/rutas-logistica")
     app.register_blueprint(parametros_sistema_bp, url_prefix="/api/v1/parametros-sistema")
+    app.register_blueprint(dashboard_bp, url_prefix="/api/v1/dashboard")
+    app.register_blueprint(reportes_bp, url_prefix="/api/v1/reportes")
     app.register_blueprint(ordenes_compra_bp, url_prefix="/api/v1/ordenes-compra")
     app.register_blueprint(
         detalles_orden_compra_bp,
         url_prefix="/api/v1/detalles-orden-compra",
     )
     app.register_blueprint(seed_cli)
+    proteger_api_con_jwt(app)
 
     return app

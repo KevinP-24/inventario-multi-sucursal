@@ -19,6 +19,7 @@ from app.modules.inventario.producto.model import Producto
 from app.modules.inventario.producto_unidad.model import ProductoUnidad
 from app.modules.inventario.tipo_movimiento_inventario.model import TipoMovimientoInventario
 from app.modules.inventario.unidad_medida.model import UnidadMedida
+from app.modules.logistica.prioridad_ruta_logistica.model import PrioridadRutaLogistica
 from app.modules.logistica.ruta_logistica.model import RutaLogistica
 from app.modules.logistica.transportista.model import Transportista
 from app.modules.logistica.envio_transferencia.model import EnvioTransferencia
@@ -53,6 +54,7 @@ __all__ = [
     "ListaPrecio",
     "PrecioProducto",
     "Transportista",
+    "PrioridadRutaLogistica",
     "RutaLogistica",
     "Transferencia",
     "DetalleTransferencia",
