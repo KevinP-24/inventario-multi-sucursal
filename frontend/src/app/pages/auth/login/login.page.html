@@ -1,0 +1,87 @@
+<section class="login-shell">
+  <div class="login-shell__hero">
+    <p class="login-shell__eyebrow">Sistema multi-sucursal</p>
+    <h1>Bienvenido a la plataforma central de operaciones.</h1>
+    <p class="login-shell__lead">
+      Gestiona inventario, compras, ventas, transferencias y reportes desde un solo entorno,
+      con visibilidad organizada por rol y por sucursal.
+    </p>
+
+    <div class="login-highlights">
+      <article>
+        <strong>Operacion centralizada</strong>
+        <span>Un solo acceso para coordinar la actividad de todas las sucursales.</span>
+      </article>
+      <article>
+        <strong>Control por perfiles</strong>
+        <span>Cada usuario visualiza solo las funciones y datos que le corresponden.</span>
+      </article>
+      <article>
+        <strong>Trazabilidad operativa</strong>
+        <span>Seguimiento claro de movimientos, procesos y decisiones dentro del sistema.</span>
+      </article>
+    </div>
+  </div>
+
+  <div class="login-panel">
+    <div class="login-card">
+    <div class="login-card__header">
+      <p class="login-card__eyebrow">Iniciar sesion</p>
+      <h2>Bienvenido de nuevo</h2>
+      <p>Ingresa con las credenciales asignadas para continuar en la plataforma.</p>
+    </div>
+
+    <form class="login-form" [formGroup]="loginForm" (ngSubmit)="submit()">
+      <label class="field field--floating">
+        <input
+          type="email"
+          formControlName="correo"
+          placeholder=" "
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+        />
+        <span>Correo corporativo</span>
+      </label>
+
+      @if (loginForm.controls.correo.touched && loginForm.controls.correo.invalid) {
+        <p class="field-error">Ingresa un correo valido.</p>
+      }
+
+      <label class="field field--floating field--password">
+        <input
+          [type]="isPasswordVisible() ? 'text' : 'password'"
+          formControlName="password"
+          placeholder=" "
+          autocomplete="current-password"
+          autocapitalize="none"
+          spellcheck="false"
+        />
+        <span>Contrasena</span>
+        <button
+          class="field__toggle"
+          type="button"
+          (click)="togglePasswordVisibility()"
+          [attr.aria-label]="isPasswordVisible() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+        >
+          <svg viewBox="0 0 640 640" aria-hidden="true">
+            <path [attr.d]="isPasswordVisible() ? eyeSlashIconPath : eyeIconPath" />
+          </svg>
+        </button>
+      </label>
+
+      @if (loginForm.controls.password.touched && loginForm.controls.password.invalid) {
+        <p class="field-error">La contrasena es obligatoria.</p>
+      }
+
+      @if (submitError()) {
+        <p class="submit-error">{{ submitError() }}</p>
+      }
+
+      <button class="login-form__submit" type="submit" [disabled]="isSubmitting()">
+        {{ isSubmitting() ? 'Ingresando...' : 'Entrar al sistema' }}
+      </button>
+    </form>
+  </div>
+  </div>
+</section>

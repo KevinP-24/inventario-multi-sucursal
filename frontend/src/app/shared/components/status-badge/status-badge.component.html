@@ -1,0 +1,8 @@
+<div
+  class="status-badge"
+  [class.status-badge--online]="type() === 'online'"
+  [class.status-badge--offline]="type() === 'offline'"
+>
+  <span class="status-badge__dot"></span>
+  <span>{{ label() }}</span>
+</div>

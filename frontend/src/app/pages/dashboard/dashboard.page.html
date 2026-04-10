@@ -1,0 +1,32 @@
+<section class="dashboard-page">
+  <app-page-header
+    eyebrow="Dashboard"
+    title="Base operativa para empezar el frontend"
+    description="Esta estructura deja separados el shell principal, las paginas del dominio y los componentes compartidos para que cada modulo pueda crecer sin acoplarse al inicio."
+  />
+
+  <section class="dashboard-grid" aria-label="Resumen de modulos">
+    @for (module of modules; track module.title) {
+      <article class="summary-card">
+        <p class="summary-card__caption">{{ module.caption }}</p>
+        <h2>{{ module.title }}</h2>
+        <p>{{ module.description }}</p>
+      </article>
+    }
+  </section>
+
+  <section class="dashboard-roadmap" aria-label="Siguientes pasos">
+    <article>
+      <h3>Core</h3>
+      <p>Servicios HTTP, interceptores, guards, manejo de sesion y configuracion central.</p>
+    </article>
+    <article>
+      <h3>Shared</h3>
+      <p>Inputs, tablas, modales, badges, estados vacios y componentes transversales.</p>
+    </article>
+    <article>
+      <h3>Pages</h3>
+      <p>Entradas por modulo con routing independiente y componentes contenedores.</p>
+    </article>
+  </section>
+</section>

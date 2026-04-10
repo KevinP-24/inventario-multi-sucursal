@@ -1,0 +1,56 @@
+<div class="workspace-shell">
+  <aside class="workspace-shell__sidebar">
+    <div class="brand">
+      <p class="brand__eyebrow">Sistema multi-sucursal</p>
+      <h1 class="brand__title">Operacion centralizada para sucursales.</h1>
+      <p class="brand__copy">
+        Base Angular preparada para crecer por modulos, roles y flujos del backend Flask.
+      </p>
+    </div>
+
+    @if (currentUser(); as user) {
+      <section class="user-card" aria-label="Sesion actual">
+        <p class="user-card__eyebrow">Sesion activa</p>
+        <strong>{{ user.nombre }}</strong>
+        <span>{{ user.correo }}</span>
+        <small>{{ user.rol?.nombre }} · {{ user.sucursal?.nombre ?? 'Alcance global' }}</small>
+      </section>
+    }
+
+    <nav class="nav" aria-label="Principal">
+      @for (item of navigationItems; track item.path) {
+        <a
+          class="nav__item"
+          [routerLink]="item.path"
+          routerLinkActive="nav__item--active"
+          [routerLinkActiveOptions]="{ exact: item.path === '/app/dashboard' }"
+        >
+          <span class="nav__icon">{{ item.icon }}</span>
+          <span class="nav__content">
+            <strong>{{ item.label }}</strong>
+            <small>{{ item.description }}</small>
+          </span>
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      <app-status-badge [label]="apiState().message" [type]="apiState().type" />
+      <button class="logout-button" type="button" (click)="logout()">Cerrar sesion</button>
+    </div>
+  </aside>
+
+  <section class="workspace-shell__content">
+    <header class="topbar">
+      <div>
+        <p class="topbar__label">Area activa</p>
+        <h2 class="topbar__title">{{ activeSection() }}</h2>
+      </div>
+      <p class="topbar__copy">Arquitectura base lista para componentes, servicios y modulos.</p>
+    </header>
+
+    <main class="page-content">
+      <router-outlet />
+    </main>
+  </section>
+</div>
