@@ -19,6 +19,9 @@ def seed_datos_base_command():
     click.echo(f"Productos listos: {len(resultado['productos'])}")
     click.echo(f"Conversiones producto-unidad listas: {len(resultado['producto_unidades'])}")
     click.echo(f"Inventario por sucursal listo: {len(resultado['inventario_sucursal'])}")
+    click.echo(
+        f"Tipos de movimiento listos: {len(resultado['tipos_movimiento_inventario'])}"
+    )
     click.echo(f"Proveedores listos: {len(resultado['proveedores'])}")
     click.echo(f"Listas de precio listas: {len(resultado['listas_precio'])}")
     click.echo(f"Precios por producto listos: {len(resultado['precios_producto'])}")

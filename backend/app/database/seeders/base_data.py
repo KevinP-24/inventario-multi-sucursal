@@ -50,6 +50,14 @@ from app.modules.inventario.producto_unidad.repository import (
     guardar_producto_unidad_en_base_de_datos,
 )
 from app.modules.inventario.producto_unidad.schema import PRODUCTO_UNIDADES_BASE
+from app.modules.inventario.tipo_movimiento_inventario.model import TipoMovimientoInventario
+from app.modules.inventario.tipo_movimiento_inventario.repository import (
+    consultar_tipo_movimiento_inventario_por_nombre_en_bd,
+    guardar_tipo_movimiento_inventario_en_base_de_datos,
+)
+from app.modules.inventario.tipo_movimiento_inventario.schema import (
+    TIPOS_MOVIMIENTO_INVENTARIO_BASE,
+)
 from app.modules.inventario.unidad_medida.model import UnidadMedida
 from app.modules.inventario.unidad_medida.repository import (
     consultar_unidad_medida_por_simbolo_en_bd,
@@ -269,6 +277,22 @@ def crear_inventario_sucursal_base_si_no_existe():
     return inventarios_listos
 
 
+def crear_tipos_movimiento_inventario_base_si_no_existen():
+    """Crea el catalogo base para clasificar los movimientos de inventario."""
+    tipos_listos = []
+
+    for datos_tipo in TIPOS_MOVIMIENTO_INVENTARIO_BASE:
+        tipo = consultar_tipo_movimiento_inventario_por_nombre_en_bd(datos_tipo["nombre"])
+
+        if not tipo:
+            tipo = TipoMovimientoInventario(**datos_tipo)
+            guardar_tipo_movimiento_inventario_en_base_de_datos(tipo)
+
+        tipos_listos.append(tipo)
+
+    return tipos_listos
+
+
 def crear_proveedores_base_si_no_existen():
     """Crea proveedores demo para preparar el modulo de compras."""
     proveedores_listos = []
@@ -386,6 +410,7 @@ def ejecutar_seed_datos_base():
     productos = crear_productos_base_si_no_existen()
     producto_unidades = crear_producto_unidades_base_si_no_existen()
     inventario_sucursal = crear_inventario_sucursal_base_si_no_existe()
+    tipos_movimiento_inventario = crear_tipos_movimiento_inventario_base_si_no_existen()
     proveedores = crear_proveedores_base_si_no_existen()
     listas_precio = crear_listas_precio_base_si_no_existen()
     precios_producto = crear_precios_producto_base_si_no_existen()
@@ -401,6 +426,7 @@ def ejecutar_seed_datos_base():
         "productos": productos,
         "producto_unidades": producto_unidades,
         "inventario_sucursal": inventario_sucursal,
+        "tipos_movimiento_inventario": tipos_movimiento_inventario,
         "proveedores": proveedores,
         "listas_precio": listas_precio,
         "precios_producto": precios_producto,

@@ -6,13 +6,15 @@ from app.extensions import db, migrate, jwt, cors
 from app.api.health import health_bp
 from app.modules.admin import parametros_sistema_bp
 from app.modules.auth import roles_bp, usuarios_bp
-from app.modules.compras import proveedores_bp
+from app.modules.compras import detalles_orden_compra_bp, ordenes_compra_bp, proveedores_bp
 from app.modules.inventario import (
     inventario_sucursal_bp,
     listas_precio_bp,
+    movimientos_inventario_bp,
     precios_producto_bp,
     productos_bp,
     producto_unidades_bp,
+    tipos_movimiento_inventario_bp,
     unidades_medida_bp,
 )
 from app.modules.logistica import rutas_logistica_bp, transportistas_bp
@@ -47,12 +49,22 @@ def create_app():
     app.register_blueprint(productos_bp, url_prefix="/api/v1/productos")
     app.register_blueprint(producto_unidades_bp, url_prefix="/api/v1/producto-unidades")
     app.register_blueprint(inventario_sucursal_bp, url_prefix="/api/v1/inventario-sucursal")
+    app.register_blueprint(
+        tipos_movimiento_inventario_bp,
+        url_prefix="/api/v1/tipos-movimiento-inventario",
+    )
+    app.register_blueprint(movimientos_inventario_bp, url_prefix="/api/v1/movimientos-inventario")
     app.register_blueprint(proveedores_bp, url_prefix="/api/v1/proveedores")
     app.register_blueprint(listas_precio_bp, url_prefix="/api/v1/listas-precio")
     app.register_blueprint(precios_producto_bp, url_prefix="/api/v1/precios-producto")
     app.register_blueprint(transportistas_bp, url_prefix="/api/v1/transportistas")
     app.register_blueprint(rutas_logistica_bp, url_prefix="/api/v1/rutas-logistica")
     app.register_blueprint(parametros_sistema_bp, url_prefix="/api/v1/parametros-sistema")
+    app.register_blueprint(ordenes_compra_bp, url_prefix="/api/v1/ordenes-compra")
+    app.register_blueprint(
+        detalles_orden_compra_bp,
+        url_prefix="/api/v1/detalles-orden-compra",
+    )
     app.register_blueprint(seed_cli)
 
     return app
