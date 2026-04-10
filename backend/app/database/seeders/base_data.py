@@ -2,18 +2,54 @@ from app.modules.auth.rol.repository import (
     consultar_rol_por_nombre_en_bd,
     guardar_rol_en_base_de_datos,
 )
+from app.modules.admin.parametro_sistema.model import ParametroSistema
+from app.modules.admin.parametro_sistema.repository import (
+    consultar_parametro_sistema_por_clave_en_bd,
+    guardar_parametro_sistema_en_base_de_datos,
+)
+from app.modules.admin.parametro_sistema.schema import PARAMETROS_SISTEMA_BASE
 from app.modules.auth.rol.schema import ROLES_BASE
 from app.modules.auth.usuario.model import Usuario
 from app.modules.auth.usuario.repository import (
     consultar_usuario_por_correo_en_bd,
     guardar_usuario_en_base_de_datos,
 )
+from app.modules.compras.proveedor.model import Proveedor
+from app.modules.compras.proveedor.repository import (
+    consultar_proveedor_por_nit_en_bd,
+    guardar_proveedor_en_base_de_datos,
+)
+from app.modules.compras.proveedor.schema import PROVEEDORES_BASE
 from app.modules.inventario.producto.model import Producto
 from app.modules.inventario.producto.repository import (
     consultar_producto_por_codigo_en_bd,
     guardar_producto_en_base_de_datos,
 )
 from app.modules.inventario.producto.schema import PRODUCTOS_BASE
+from app.modules.inventario.inventario_sucursal.model import InventarioSucursal
+from app.modules.inventario.inventario_sucursal.repository import (
+    consultar_inventario_por_sucursal_y_producto_en_bd,
+    guardar_inventario_sucursal_en_base_de_datos,
+)
+from app.modules.inventario.inventario_sucursal.schema import INVENTARIO_SUCURSAL_BASE
+from app.modules.inventario.lista_precio.model import ListaPrecio
+from app.modules.inventario.lista_precio.repository import (
+    consultar_lista_precio_por_nombre_en_bd,
+    guardar_lista_precio_en_base_de_datos,
+)
+from app.modules.inventario.lista_precio.schema import LISTAS_PRECIO_BASE
+from app.modules.inventario.precio_producto.model import PrecioProducto
+from app.modules.inventario.precio_producto.repository import (
+    consultar_precio_por_producto_y_lista_en_bd,
+    guardar_precio_producto_en_base_de_datos,
+)
+from app.modules.inventario.precio_producto.schema import PRECIOS_PRODUCTO_BASE
+from app.modules.inventario.producto_unidad.model import ProductoUnidad
+from app.modules.inventario.producto_unidad.repository import (
+    consultar_producto_unidad_por_producto_y_unidad_en_bd,
+    guardar_producto_unidad_en_base_de_datos,
+)
+from app.modules.inventario.producto_unidad.schema import PRODUCTO_UNIDADES_BASE
 from app.modules.inventario.unidad_medida.model import UnidadMedida
 from app.modules.inventario.unidad_medida.repository import (
     consultar_unidad_medida_por_simbolo_en_bd,
@@ -26,6 +62,18 @@ from app.modules.sucursales.sucursal.repository import (
     guardar_sucursal_en_base_de_datos,
 )
 from app.modules.sucursales.sucursal.schema import SUCURSALES_BASE
+from app.modules.logistica.ruta_logistica.model import RutaLogistica
+from app.modules.logistica.ruta_logistica.repository import (
+    consultar_ruta_logistica_por_nombre_en_bd,
+    guardar_ruta_logistica_en_base_de_datos,
+)
+from app.modules.logistica.ruta_logistica.schema import RUTAS_LOGISTICA_BASE
+from app.modules.logistica.transportista.model import Transportista
+from app.modules.logistica.transportista.repository import (
+    consultar_transportista_por_identificacion_en_bd,
+    guardar_transportista_en_base_de_datos,
+)
+from app.modules.logistica.transportista.schema import TRANSPORTISTAS_BASE
 from app.security.password import generar_hash_password
 
 
@@ -162,6 +210,173 @@ def crear_productos_base_si_no_existen():
     return productos_listos
 
 
+def crear_producto_unidades_base_si_no_existen():
+    """Crea conversiones demo entre productos y unidades de medida."""
+    conversiones_listas = []
+
+    for datos_conversion in PRODUCTO_UNIDADES_BASE:
+        producto = consultar_producto_por_codigo_en_bd(datos_conversion["codigo_producto"])
+        unidad = consultar_unidad_medida_por_simbolo_en_bd(datos_conversion["simbolo_unidad"])
+
+        conversion = consultar_producto_unidad_por_producto_y_unidad_en_bd(
+            producto.id_producto,
+            unidad.id_unidad,
+        )
+
+        if not conversion:
+            conversion = ProductoUnidad(
+                id_producto=producto.id_producto,
+                id_unidad=unidad.id_unidad,
+                factor_conversion=datos_conversion["factor_conversion"],
+                es_base=datos_conversion["es_base"],
+                activo=True,
+            )
+            guardar_producto_unidad_en_base_de_datos(conversion)
+
+        conversiones_listas.append(conversion)
+
+    return conversiones_listas
+
+
+def crear_inventario_sucursal_base_si_no_existe():
+    """Crea stock demo por sucursal y producto para arrancar la sustentacion.
+
+    Solo inserta si no existe la combinacion sucursal/producto. Asi el seeder
+    se puede ejecutar muchas veces sin pisar cantidades modificadas en pruebas.
+    """
+    inventarios_listos = []
+
+    for datos_inventario in INVENTARIO_SUCURSAL_BASE:
+        sucursal = consultar_sucursal_por_nombre_en_bd(datos_inventario["sucursal"])
+        producto = consultar_producto_por_codigo_en_bd(datos_inventario["producto"])
+
+        inventario = consultar_inventario_por_sucursal_y_producto_en_bd(
+            sucursal.id_sucursal,
+            producto.id_producto,
+        )
+
+        if not inventario:
+            inventario = InventarioSucursal(
+                id_sucursal=sucursal.id_sucursal,
+                id_producto=producto.id_producto,
+                cantidad_actual=datos_inventario["cantidad_actual"],
+                costo_promedio=datos_inventario["costo_promedio"],
+            )
+            guardar_inventario_sucursal_en_base_de_datos(inventario)
+
+        inventarios_listos.append(inventario)
+
+    return inventarios_listos
+
+
+def crear_proveedores_base_si_no_existen():
+    """Crea proveedores demo para preparar el modulo de compras."""
+    proveedores_listos = []
+
+    for datos_proveedor in PROVEEDORES_BASE:
+        proveedor = consultar_proveedor_por_nit_en_bd(datos_proveedor["nit"])
+
+        if not proveedor:
+            proveedor = Proveedor(**datos_proveedor)
+            guardar_proveedor_en_base_de_datos(proveedor)
+
+        proveedores_listos.append(proveedor)
+
+    return proveedores_listos
+
+
+def crear_listas_precio_base_si_no_existen():
+    """Crea listas de precio demo para preparar ventas."""
+    listas_listas = []
+
+    for datos_lista in LISTAS_PRECIO_BASE:
+        lista = consultar_lista_precio_por_nombre_en_bd(datos_lista["nombre"])
+
+        if not lista:
+            lista = ListaPrecio(**datos_lista)
+            guardar_lista_precio_en_base_de_datos(lista)
+
+        listas_listas.append(lista)
+
+    return listas_listas
+
+
+def crear_precios_producto_base_si_no_existen():
+    """Crea precios demo por producto y lista de precio."""
+    precios_listos = []
+
+    for datos_precio in PRECIOS_PRODUCTO_BASE:
+        producto = consultar_producto_por_codigo_en_bd(datos_precio["codigo_producto"])
+        lista = consultar_lista_precio_por_nombre_en_bd(datos_precio["lista_precio"])
+
+        precio = consultar_precio_por_producto_y_lista_en_bd(
+            producto.id_producto,
+            lista.id_lista_precio,
+        )
+
+        if not precio:
+            precio = PrecioProducto(
+                id_producto=producto.id_producto,
+                id_lista_precio=lista.id_lista_precio,
+                precio=datos_precio["precio"],
+            )
+            guardar_precio_producto_en_base_de_datos(precio)
+
+        precios_listos.append(precio)
+
+    return precios_listos
+
+
+def crear_transportistas_base_si_no_existen():
+    """Crea transportistas demo para preparar logistica."""
+    transportistas_listos = []
+
+    for datos_transportista in TRANSPORTISTAS_BASE:
+        transportista = consultar_transportista_por_identificacion_en_bd(
+            datos_transportista["identificacion"]
+        )
+
+        if not transportista:
+            transportista = Transportista(**datos_transportista)
+            guardar_transportista_en_base_de_datos(transportista)
+
+        transportistas_listos.append(transportista)
+
+    return transportistas_listos
+
+
+def crear_rutas_logistica_base_si_no_existen():
+    """Crea rutas logisticas demo entre sucursales reales."""
+    rutas_listas = []
+
+    for datos_ruta in RUTAS_LOGISTICA_BASE:
+        ruta = consultar_ruta_logistica_por_nombre_en_bd(datos_ruta["nombre_ruta"])
+
+        if not ruta:
+            ruta = RutaLogistica(**datos_ruta)
+            guardar_ruta_logistica_en_base_de_datos(ruta)
+
+        rutas_listas.append(ruta)
+
+    return rutas_listas
+
+
+def crear_parametros_sistema_base_si_no_existen():
+    """Crea parametros demo de configuracion general."""
+    parametros_listos = []
+
+    for datos_parametro in PARAMETROS_SISTEMA_BASE:
+        parametro = consultar_parametro_sistema_por_clave_en_bd(datos_parametro["clave"])
+
+        if not parametro:
+            parametro = ParametroSistema(**datos_parametro)
+            guardar_parametro_sistema_en_base_de_datos(parametro)
+
+        parametros_listos.append(parametro)
+
+    return parametros_listos
+
+
 def ejecutar_seed_datos_base():
     """Ejecuta todos los datos iniciales que necesita el sistema para arrancar."""
     roles = crear_roles_base_si_no_existen()
@@ -169,6 +384,14 @@ def ejecutar_seed_datos_base():
     usuarios = crear_usuarios_base_si_no_existen()
     unidades_medida = crear_unidades_medida_base_si_no_existen()
     productos = crear_productos_base_si_no_existen()
+    producto_unidades = crear_producto_unidades_base_si_no_existen()
+    inventario_sucursal = crear_inventario_sucursal_base_si_no_existe()
+    proveedores = crear_proveedores_base_si_no_existen()
+    listas_precio = crear_listas_precio_base_si_no_existen()
+    precios_producto = crear_precios_producto_base_si_no_existen()
+    transportistas = crear_transportistas_base_si_no_existen()
+    rutas_logistica = crear_rutas_logistica_base_si_no_existen()
+    parametros_sistema = crear_parametros_sistema_base_si_no_existen()
 
     return {
         "roles": roles,
@@ -176,4 +399,12 @@ def ejecutar_seed_datos_base():
         "usuarios": usuarios,
         "unidades_medida": unidades_medida,
         "productos": productos,
+        "producto_unidades": producto_unidades,
+        "inventario_sucursal": inventario_sucursal,
+        "proveedores": proveedores,
+        "listas_precio": listas_precio,
+        "precios_producto": precios_producto,
+        "transportistas": transportistas,
+        "rutas_logistica": rutas_logistica,
+        "parametros_sistema": parametros_sistema,
     }

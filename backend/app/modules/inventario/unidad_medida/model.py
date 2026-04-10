@@ -11,6 +11,8 @@ class UnidadMedida(db.Model):
     simbolo = db.Column(db.String(20), nullable=False, unique=True)
     activo = db.Column(db.Boolean, nullable=False, default=True)
 
+    productos = db.relationship("ProductoUnidad", back_populates="unidad_medida", lazy=True)
+
     def convertir_a_diccionario(self):
         """Devuelve la unidad en formato facil de responder por API."""
         return {

@@ -13,6 +13,8 @@ class Producto(db.Model):
     stock_minimo = db.Column(db.Numeric(12, 2), nullable=False, default=0)
     activo = db.Column(db.Boolean, nullable=False, default=True)
 
+    unidades = db.relationship("ProductoUnidad", back_populates="producto", lazy=True)
+
     def convertir_a_diccionario(self):
         """Devuelve el producto en formato facil de responder por API."""
         return {
