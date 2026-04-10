@@ -28,7 +28,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: python run.py
+    command: >
+      sh -c "python -m flask db upgrade &&
+             python -m flask seed datos-base &&
+             python run.py"
 
 volumes:
   postgres_data:

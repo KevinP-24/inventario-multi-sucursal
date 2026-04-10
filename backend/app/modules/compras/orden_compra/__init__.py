@@ -1,0 +1,1 @@
+"""Entidad orden_compra."""

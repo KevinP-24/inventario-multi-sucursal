@@ -1,0 +1,1 @@
+"""Entidad envio_transferencia."""

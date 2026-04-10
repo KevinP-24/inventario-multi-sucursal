@@ -1,0 +1,1 @@
+"""Entidad precio_producto."""

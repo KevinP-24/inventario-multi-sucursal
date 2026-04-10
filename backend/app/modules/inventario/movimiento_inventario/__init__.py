@@ -1,0 +1,1 @@
+"""Entidad movimiento_inventario."""

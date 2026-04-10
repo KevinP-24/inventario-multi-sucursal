@@ -1,0 +1,1 @@
+"""Modelo SQLAlchemy de transferencia."""

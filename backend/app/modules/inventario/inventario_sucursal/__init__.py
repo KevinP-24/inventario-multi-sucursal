@@ -1,0 +1,1 @@
+"""Entidad inventario_sucursal."""

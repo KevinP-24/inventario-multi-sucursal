@@ -1,0 +1,1 @@
+"""Entidad detalle_venta."""

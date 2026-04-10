@@ -1,0 +1,1 @@
+"""Entidad ruta_logistica."""

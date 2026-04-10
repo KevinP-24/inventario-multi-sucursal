@@ -1,0 +1,1 @@
+"""Entidad producto_unidad."""
