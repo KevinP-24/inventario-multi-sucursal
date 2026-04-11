@@ -25,4 +25,5 @@ export interface GuardarProveedorDto {
   readonly correo?: string | null;
   readonly telefono?: string | null;
   readonly direccion?: string | null;
+  readonly activo?: boolean;
 }

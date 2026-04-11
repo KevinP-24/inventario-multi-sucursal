@@ -14,6 +14,7 @@ PERMISOS_POR_ROL = {
     "Admin general": {"*"},
     "Admin sucursal": {
         "auth",
+        "clientes",
         "dashboard",
         "detalles_orden_compra",
         "detalles_transferencia",
@@ -22,6 +23,7 @@ PERMISOS_POR_ROL = {
         "inventario_sucursal",
         "listas_precio",
         "movimientos_inventario",
+        "ordenes_compra",
         "precios_producto",
         "prioridades_ruta_logistica",
         "productos",
@@ -39,6 +41,7 @@ PERMISOS_POR_ROL = {
     },
     "Operario de inventario": {
         "auth",
+        "clientes",
         "dashboard",
         "detalles_orden_compra",
         "detalles_transferencia",

@@ -17,11 +17,20 @@ import { InventarioApiService } from '../../core/services/inventario/inventario-
 import {
   AjustarInventarioDto,
   InventarioSucursalDto,
+  MovimientoOperativoInventarioDto,
   StockAlertDto,
   TipoAjusteInventarioDto
 } from '../../core/services/inventario/dtos/inventario-sucursal.dto';
 import { MovimientoInventarioDto } from '../../core/services/inventario/dtos/movimiento-inventario.dto';
-import { ProductoDto } from '../../core/services/inventario/dtos/producto.dto';
+import { GuardarProductoDto, ProductoDto } from '../../core/services/inventario/dtos/producto.dto';
+import {
+  GuardarProductoUnidadDto,
+  ProductoUnidadDto
+} from '../../core/services/inventario/dtos/producto-unidad.dto';
+import { UnidadMedidaDto } from '../../core/services/inventario/dtos/unidad-medida.dto';
+
+type InventarioSection = 'operacion' | 'productos' | 'unidades';
+type MovimientoOperativoForm = 'AJUSTE' | 'DEVOLUCION' | 'MERMA';
 
 interface InventarioFilaVm {
   readonly id_inventario: number;
@@ -34,6 +43,19 @@ interface InventarioFilaVm {
   readonly stock_minimo: number;
   readonly bajo_stock: boolean;
   readonly cantidad_faltante: number;
+}
+
+interface ProductoUnidadVm {
+  readonly id_producto_unidad: number;
+  readonly id_producto: number;
+  readonly producto: string;
+  readonly codigo_producto: string;
+  readonly id_unidad: number;
+  readonly unidad: string;
+  readonly simbolo: string;
+  readonly factor_conversion: number;
+  readonly es_base: boolean;
+  readonly activo: boolean;
 }
 
 @Component({
@@ -49,9 +71,12 @@ export class InventarioPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly inventarioApi = inject(InventarioApiService);
 
+  readonly activeSection = signal<InventarioSection>('operacion');
   readonly loading = signal(false);
   readonly loadingMovimientos = signal(false);
   readonly submitting = signal(false);
+  readonly submittingProducto = signal(false);
+  readonly submittingUnidad = signal(false);
   readonly errorMessage = signal('');
   readonly successMessage = signal('');
 
@@ -59,7 +84,12 @@ export class InventarioPage implements OnInit {
   readonly inventarioVisible = signal<InventarioFilaVm[]>([]);
   readonly alertas = signal<StockAlertDto[]>([]);
   readonly movimientos = signal<MovimientoInventarioDto[]>([]);
+  readonly productos = signal<ProductoDto[]>([]);
+  readonly productoUnidades = signal<ProductoUnidadDto[]>([]);
+  readonly unidadesMedida = signal<UnidadMedidaDto[]>([]);
   readonly selectedInventarioId = signal<number | null>(null);
+  readonly selectedProductoId = signal<number | null>(null);
+  readonly selectedProductoUnidadId = signal<number | null>(null);
 
   readonly operadorSucursalId = signal<number | null>(this.resolveSucursalOperadorId());
   readonly usuarioId = signal<number | null>(this.resolveUsuarioId());
@@ -103,32 +133,122 @@ export class InventarioPage implements OnInit {
     this.inventarioVisible().filter(item => item.bajo_stock).length
   );
 
+  readonly productosActivos = computed(() => this.productos().filter(item => item.activo));
+  readonly productoStatusFilter = signal<'TODOS' | 'ACTIVOS' | 'INACTIVOS'>('TODOS');
+  readonly productoSearchTerm = signal('');
+  readonly productosCatalogoVisible = computed(() => {
+    const status = this.productoStatusFilter();
+    const search = this.productoSearchTerm().trim().toLowerCase();
+
+    return this.productos().filter(item => {
+      const matchStatus =
+        status === 'TODOS' ||
+        (status === 'ACTIVOS' && item.activo) ||
+        (status === 'INACTIVOS' && !item.activo);
+
+      const matchSearch =
+        !search ||
+        item.codigo.toLowerCase().includes(search) ||
+        item.nombre.toLowerCase().includes(search);
+
+      return matchStatus && matchSearch;
+    });
+  });
+
+  readonly productoUnidadesVm = computed<ProductoUnidadVm[]>(() => {
+    const productosMap = new Map(this.productos().map(item => [item.id_producto, item]));
+    const unidadesMap = new Map(this.unidadesMedida().map(item => [item.id_unidad, item]));
+
+    return this.productoUnidades().map(item => {
+      const producto = item.producto ?? productosMap.get(item.id_producto) ?? null;
+      const unidad = item.unidad_medida ?? unidadesMap.get(item.id_unidad) ?? null;
+
+      return {
+        id_producto_unidad: item.id_producto_unidad,
+        id_producto: item.id_producto,
+        producto: producto?.nombre ?? `Producto #${item.id_producto}`,
+        codigo_producto: producto?.codigo ?? `PRD-${item.id_producto}`,
+        id_unidad: item.id_unidad,
+        unidad: unidad?.nombre ?? `Unidad #${item.id_unidad}`,
+        simbolo: unidad?.simbolo ?? '-',
+        factor_conversion: item.factor_conversion,
+        es_base: item.es_base,
+        activo: item.activo
+      };
+    });
+  });
+
   readonly filtroForm = this.fb.nonNullable.group({
     id_sucursal: this.resolveSucursalOperadorId() ?? 0,
     busqueda: '',
     solo_bajo_stock: false
   });
 
-  readonly ajusteForm = this.fb.group({
+  readonly movimientoForm = this.fb.group({
     id_usuario: this.fb.nonNullable.control(this.resolveUsuarioId() ?? 0, [
       Validators.required,
       Validators.min(1)
+    ]),
+    tipo_operacion: this.fb.nonNullable.control<MovimientoOperativoForm>('AJUSTE', [
+      Validators.required
     ]),
     tipo_ajuste: this.fb.nonNullable.control<TipoAjusteInventarioDto>('ENTRADA', [
       Validators.required
     ]),
     cantidad: this.fb.control<number | null>(1, [Validators.required, Validators.min(0.01)]),
-    cantidad_actual_nueva: this.fb.control<number | null>(null)
+    cantidad_actual_nueva: this.fb.control<number | null>(null),
+    id_origen: this.fb.control<number | null>(null),
+    motivo: this.fb.control<string>('Ajuste operativo de inventario')
+  });
+
+  readonly productoForm = this.fb.nonNullable.group({
+    codigo: ['', [Validators.required, Validators.maxLength(50)]],
+    nombre: ['', [Validators.required, Validators.maxLength(120)]],
+    descripcion: [''],
+    stock_minimo: [0, [Validators.required, Validators.min(0)]]
+  });
+
+  readonly productoUnidadForm = this.fb.nonNullable.group({
+    id_producto: [0, [Validators.required, Validators.min(1)]],
+    id_unidad: [0, [Validators.required, Validators.min(1)]],
+    factor_conversion: [1, [Validators.required, Validators.min(0.0001)]],
+    es_base: [false]
   });
 
   ngOnInit(): void {
     this.cargarVista();
 
-    this.ajusteForm.controls.tipo_ajuste.valueChanges
+    this.movimientoForm.controls.tipo_operacion.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(tipo => this.syncValidacionesAjuste(tipo));
+      .subscribe(tipoOperacion => {
+        this.syncValidacionesMovimiento(tipoOperacion, this.movimientoForm.controls.tipo_ajuste.value);
+        this.syncMotivoPorOperacion(tipoOperacion);
+      });
 
-    this.syncValidacionesAjuste(this.ajusteForm.controls.tipo_ajuste.value);
+    this.movimientoForm.controls.tipo_ajuste.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(tipoAjuste =>
+        this.syncValidacionesMovimiento(this.movimientoForm.controls.tipo_operacion.value, tipoAjuste)
+      );
+
+    this.syncValidacionesMovimiento(
+      this.movimientoForm.controls.tipo_operacion.value,
+      this.movimientoForm.controls.tipo_ajuste.value
+    );
+  }
+
+  seleccionarSeccion(section: InventarioSection): void {
+    this.activeSection.set(section);
+    this.errorMessage.set('');
+    this.successMessage.set('');
+  }
+
+  setProductoStatusFilter(status: 'TODOS' | 'ACTIVOS' | 'INACTIVOS'): void {
+    this.productoStatusFilter.set(status);
+  }
+
+  setProductoSearchTerm(term: string): void {
+    this.productoSearchTerm.set(term);
   }
 
   cargarVista(): void {
@@ -143,17 +263,28 @@ export class InventarioPage implements OnInit {
       productosResponse: this.inventarioApi.productos.listarProductos(),
       alertasResponse: this.inventarioApi.inventarioSucursal.listarAlertasStockBajo(
         idSucursalFiltro
-      )
+      ),
+      productoUnidadesResponse: this.inventarioApi.productoUnidades.listarProductoUnidades(),
+      unidadesResponse: this.inventarioApi.unidadesMedida.listarUnidadesMedida()
     })
       .pipe(
         finalize(() => this.loading.set(false)),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: ({ inventariosResponse, productosResponse, alertasResponse }) => {
+        next: ({
+          inventariosResponse,
+          productosResponse,
+          alertasResponse,
+          productoUnidadesResponse,
+          unidadesResponse
+        }) => {
           const inventarios = this.extractData<InventarioSucursalDto[]>(inventariosResponse);
           const productos = this.extractData<ProductoDto[]>(productosResponse);
           const alertas = this.extractData<StockAlertDto[]>(alertasResponse);
+          const productoUnidades =
+            this.extractData<ProductoUnidadDto[]>(productoUnidadesResponse);
+          const unidades = this.extractData<UnidadMedidaDto[]>(unidadesResponse);
 
           const productosMap = new Map<number, ProductoDto>(
             productos.map(producto => [producto.id_producto, producto])
@@ -184,6 +315,10 @@ export class InventarioPage implements OnInit {
 
           this.inventarioBase.set(inventarioVm);
           this.alertas.set(alertas);
+          this.productos.set(productos);
+          this.productoUnidades.set(productoUnidades);
+          this.unidadesMedida.set(unidades.filter(item => item.activo));
+          this.ensureUnidadFormDefaults();
           this.aplicarFiltrosInternos();
         },
         error: () => {
@@ -192,6 +327,9 @@ export class InventarioPage implements OnInit {
           this.inventarioVisible.set([]);
           this.alertas.set([]);
           this.movimientos.set([]);
+          this.productos.set([]);
+          this.productoUnidades.set([]);
+          this.unidadesMedida.set([]);
           this.selectedInventarioId.set(null);
         }
       });
@@ -230,7 +368,7 @@ export class InventarioPage implements OnInit {
       });
   }
 
-  registrarAjuste(): void {
+  registrarMovimiento(): void {
     const inventarioSeleccionado = this.inventarioSeleccionado();
 
     if (!inventarioSeleccionado) {
@@ -245,37 +383,306 @@ export class InventarioPage implements OnInit {
       return;
     }
 
-    if (this.ajusteForm.invalid) {
-      this.ajusteForm.markAllAsTouched();
+    if (this.movimientoForm.invalid) {
+      this.movimientoForm.markAllAsTouched();
       return;
     }
 
-    const payload = this.buildAjustePayload();
-    if (!payload) {
-      this.errorMessage.set('Completa correctamente los datos del movimiento.');
-      return;
-    }
+    const { tipo_operacion } = this.movimientoForm.getRawValue();
 
     this.submitting.set(true);
     this.errorMessage.set('');
     this.successMessage.set('');
 
-    this.inventarioApi.inventarioSucursal
-      .ajustarInventarioSucursal(inventarioSeleccionado.id_inventario, payload)
+    if (tipo_operacion === 'AJUSTE') {
+      const payload = this.buildAjustePayload();
+      if (!payload) {
+        this.submitting.set(false);
+        this.errorMessage.set('Completa correctamente los datos del ajuste.');
+        return;
+      }
+
+      this.inventarioApi.inventarioSucursal
+        .ajustarInventarioSucursal(inventarioSeleccionado.id_inventario, payload)
+        .pipe(
+          finalize(() => this.submitting.set(false)),
+          takeUntilDestroyed(this.destroyRef)
+        )
+        .subscribe({
+          next: () => {
+            this.successMessage.set('Ajuste registrado correctamente.');
+            this.resetMovimientoForm();
+            this.cargarVista();
+          },
+          error: () => {
+            this.errorMessage.set('No se pudo registrar el ajuste.');
+          }
+        });
+
+      return;
+    }
+
+    const payload = this.buildMovimientoOperativoPayload();
+    if (!payload) {
+      this.submitting.set(false);
+      this.errorMessage.set('Completa correctamente los datos del movimiento.');
+      return;
+    }
+
+    const request =
+      tipo_operacion === 'DEVOLUCION'
+        ? this.inventarioApi.inventarioSucursal.registrarDevolucionInventario(
+            inventarioSeleccionado.id_inventario,
+            payload
+          )
+        : this.inventarioApi.inventarioSucursal.registrarMermaInventario(
+            inventarioSeleccionado.id_inventario,
+            payload
+          );
+
+    request
       .pipe(
         finalize(() => this.submitting.set(false)),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: () => {
-          this.successMessage.set('Movimiento registrado correctamente.');
-          this.resetAjusteForm();
+          this.successMessage.set(
+            tipo_operacion === 'DEVOLUCION'
+              ? 'Devolución registrada correctamente.'
+              : 'Merma registrada correctamente.'
+          );
+          this.resetMovimientoForm();
           this.cargarVista();
         },
         error: () => {
-          this.errorMessage.set('No se pudo registrar el movimiento.');
+          this.errorMessage.set(
+            tipo_operacion === 'DEVOLUCION'
+              ? 'No se pudo registrar la devolución.'
+              : 'No se pudo registrar la merma.'
+          );
         }
       });
+  }
+
+  editarProducto(producto: ProductoDto): void {
+    this.activeSection.set('productos');
+    this.selectedProductoId.set(producto.id_producto);
+    this.productoForm.setValue({
+      codigo: producto.codigo,
+      nombre: producto.nombre,
+      descripcion: producto.descripcion ?? '',
+      stock_minimo: producto.stock_minimo
+    });
+  }
+
+  guardarProducto(): void {
+    if (this.productoForm.invalid) {
+      this.productoForm.markAllAsTouched();
+      return;
+    }
+
+    this.submittingProducto.set(true);
+    this.errorMessage.set('');
+    this.successMessage.set('');
+
+    const value = this.productoForm.getRawValue();
+    const productoActual =
+      this.productos().find(item => item.id_producto === this.selectedProductoId()) ?? null;
+    const payload: GuardarProductoDto = {
+      codigo: value.codigo.trim(),
+      nombre: value.nombre.trim(),
+      descripcion: value.descripcion.trim() || null,
+      stock_minimo: Number(value.stock_minimo),
+      activo: productoActual?.activo ?? true
+    };
+
+    const request = this.selectedProductoId()
+      ? this.inventarioApi.productos.actualizarProducto(this.selectedProductoId()!, payload)
+      : this.inventarioApi.productos.crearProducto(payload);
+
+    request
+      .pipe(
+        finalize(() => this.submittingProducto.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: () => {
+          this.successMessage.set(
+            this.selectedProductoId()
+              ? 'Producto actualizado correctamente.'
+              : 'Producto creado correctamente.'
+          );
+          this.resetProductoForm();
+          this.cargarVista();
+          this.activeSection.set('productos');
+        },
+        error: () => {
+          this.errorMessage.set('No se pudo guardar el producto.');
+        }
+      });
+  }
+
+  toggleEstadoProducto(producto: ProductoDto): void {
+    const nextActivo = !producto.activo;
+    const actionLabel = nextActivo ? 'activar' : 'desactivar';
+
+    if (!confirm(`Deseas ${actionLabel} el producto "${producto.nombre}"?`)) {
+      return;
+    }
+
+    const payload: GuardarProductoDto = {
+      codigo: producto.codigo,
+      nombre: producto.nombre,
+      descripcion: producto.descripcion,
+      stock_minimo: producto.stock_minimo,
+      activo: nextActivo
+    };
+
+    this.inventarioApi.productos
+      .actualizarProducto(producto.id_producto, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.successMessage.set(
+            nextActivo ? 'Producto activado correctamente.' : 'Producto desactivado correctamente.'
+          );
+          if (this.selectedProductoId() === producto.id_producto) {
+            this.resetProductoForm();
+          }
+          this.cargarVista();
+          this.activeSection.set('productos');
+        },
+        error: () => {
+          this.errorMessage.set(
+            nextActivo ? 'No se pudo activar el producto.' : 'No se pudo desactivar el producto.'
+          );
+        }
+      });
+  }
+
+  resetProductoForm(): void {
+    this.selectedProductoId.set(null);
+    this.productoForm.reset({
+      codigo: '',
+      nombre: '',
+      descripcion: '',
+      stock_minimo: 0
+    });
+  }
+
+  editarProductoUnidad(item: ProductoUnidadVm): void {
+    this.activeSection.set('unidades');
+    this.selectedProductoUnidadId.set(item.id_producto_unidad);
+    this.productoUnidadForm.setValue({
+      id_producto: item.id_producto,
+      id_unidad: item.id_unidad,
+      factor_conversion: item.factor_conversion,
+      es_base: item.es_base
+    });
+  }
+
+  guardarProductoUnidad(): void {
+    if (this.productoUnidadForm.invalid) {
+      this.productoUnidadForm.markAllAsTouched();
+      return;
+    }
+
+    this.submittingUnidad.set(true);
+    this.errorMessage.set('');
+    this.successMessage.set('');
+
+    const value = this.productoUnidadForm.getRawValue();
+    const unidadActual =
+      this.productoUnidades().find(item => item.id_producto_unidad === this.selectedProductoUnidadId()) ??
+      null;
+    const payload: GuardarProductoUnidadDto = {
+      id_producto: Number(value.id_producto),
+      id_unidad: Number(value.id_unidad),
+      factor_conversion: Number(value.factor_conversion),
+      es_base: Boolean(value.es_base),
+      activo: unidadActual?.activo ?? true
+    };
+
+    const request = this.selectedProductoUnidadId()
+      ? this.inventarioApi.productoUnidades.actualizarProductoUnidad(
+          this.selectedProductoUnidadId()!,
+          payload
+        )
+      : this.inventarioApi.productoUnidades.crearProductoUnidad(payload);
+
+    request
+      .pipe(
+        finalize(() => this.submittingUnidad.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: () => {
+          this.successMessage.set(
+            this.selectedProductoUnidadId()
+              ? 'Unidad del producto actualizada correctamente.'
+              : 'Unidad del producto registrada correctamente.'
+          );
+          this.resetProductoUnidadForm();
+          this.cargarVista();
+          this.activeSection.set('unidades');
+        },
+        error: () => {
+          this.errorMessage.set('No se pudo guardar la unidad del producto.');
+        }
+      });
+  }
+
+  eliminarProductoUnidad(item: ProductoUnidadVm): void {
+    const nextActivo = !item.activo;
+    const actionLabel = nextActivo ? 'activar' : 'desactivar';
+
+    if (!confirm(`Deseas ${actionLabel} la unidad "${item.unidad}" de "${item.producto}"?`)) {
+      return;
+    }
+
+    const payload: GuardarProductoUnidadDto = {
+      id_producto: item.id_producto,
+      id_unidad: item.id_unidad,
+      factor_conversion: item.factor_conversion,
+      es_base: item.es_base,
+      activo: nextActivo
+    };
+
+    this.inventarioApi.productoUnidades
+      .actualizarProductoUnidad(item.id_producto_unidad, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.successMessage.set(
+            nextActivo
+              ? 'Unidad del producto activada correctamente.'
+              : 'Unidad del producto desactivada correctamente.'
+          );
+          if (this.selectedProductoUnidadId() === item.id_producto_unidad) {
+            this.resetProductoUnidadForm();
+          }
+          this.cargarVista();
+          this.activeSection.set('unidades');
+        },
+        error: () => {
+          this.errorMessage.set(
+            nextActivo
+              ? 'No se pudo activar la unidad del producto.'
+              : 'No se pudo desactivar la unidad del producto.'
+          );
+        }
+      });
+  }
+
+  resetProductoUnidadForm(): void {
+    this.selectedProductoUnidadId.set(null);
+    this.productoUnidadForm.reset({
+      id_producto: this.productosActivos()[0]?.id_producto ?? 0,
+      id_unidad: this.unidadesMedida()[0]?.id_unidad ?? 0,
+      factor_conversion: 1,
+      es_base: false
+    });
   }
 
   private aplicarFiltrosInternos(): void {
@@ -313,7 +720,7 @@ export class InventarioPage implements OnInit {
   }
 
   private buildAjustePayload(): AjustarInventarioDto | null {
-    const value = this.ajusteForm.getRawValue();
+    const value = this.movimientoForm.getRawValue();
 
     if (value.tipo_ajuste === 'AJUSTE') {
       if (value.cantidad_actual_nueva === null || value.cantidad_actual_nueva === undefined) {
@@ -323,7 +730,8 @@ export class InventarioPage implements OnInit {
       return {
         id_usuario: Number(value.id_usuario),
         tipo_ajuste: value.tipo_ajuste,
-        cantidad_actual_nueva: Number(value.cantidad_actual_nueva)
+        cantidad_actual_nueva: Number(value.cantidad_actual_nueva),
+        motivo: value.motivo?.trim() || null
       };
     }
 
@@ -334,38 +742,102 @@ export class InventarioPage implements OnInit {
     return {
       id_usuario: Number(value.id_usuario),
       tipo_ajuste: value.tipo_ajuste,
-      cantidad: Number(value.cantidad)
+      cantidad: Number(value.cantidad),
+      motivo: value.motivo?.trim() || null
     };
   }
 
-  private syncValidacionesAjuste(tipo: TipoAjusteInventarioDto): void {
-    const cantidadControl = this.ajusteForm.controls.cantidad;
-    const cantidadNuevaControl = this.ajusteForm.controls.cantidad_actual_nueva;
+  private buildMovimientoOperativoPayload(): MovimientoOperativoInventarioDto | null {
+    const value = this.movimientoForm.getRawValue();
 
-    if (tipo === 'AJUSTE') {
+    if (value.cantidad === null || value.cantidad === undefined) {
+      return null;
+    }
+
+    return {
+      id_usuario: Number(value.id_usuario),
+      cantidad: Number(value.cantidad),
+      id_origen:
+        value.id_origen === null || value.id_origen === undefined ? null : Number(value.id_origen),
+      motivo: value.motivo?.trim() || null
+    };
+  }
+
+  private syncValidacionesMovimiento(
+    tipoOperacion: MovimientoOperativoForm,
+    tipoAjuste: TipoAjusteInventarioDto
+  ): void {
+    const cantidadControl = this.movimientoForm.controls.cantidad;
+    const cantidadNuevaControl = this.movimientoForm.controls.cantidad_actual_nueva;
+    const idOrigenControl = this.movimientoForm.controls.id_origen;
+
+    if (tipoOperacion === 'AJUSTE' && tipoAjuste === 'AJUSTE') {
       cantidadControl.clearValidators();
       cantidadControl.setValue(null, { emitEvent: false });
-
       cantidadNuevaControl.setValidators([Validators.required, Validators.min(0)]);
     } else {
       cantidadControl.setValidators([Validators.required, Validators.min(0.01)]);
+      if (cantidadControl.value === null) {
+        cantidadControl.setValue(1, { emitEvent: false });
+      }
       cantidadNuevaControl.clearValidators();
       cantidadNuevaControl.setValue(null, { emitEvent: false });
     }
 
+    if (tipoOperacion === 'AJUSTE') {
+      idOrigenControl.clearValidators();
+      idOrigenControl.setValue(null, { emitEvent: false });
+    } else {
+      idOrigenControl.setValidators([Validators.min(1)]);
+    }
+
     cantidadControl.updateValueAndValidity({ emitEvent: false });
     cantidadNuevaControl.updateValueAndValidity({ emitEvent: false });
+    idOrigenControl.updateValueAndValidity({ emitEvent: false });
   }
 
-  private resetAjusteForm(): void {
-    this.ajusteForm.patchValue({
+  private syncMotivoPorOperacion(tipoOperacion: MovimientoOperativoForm): void {
+    const motivoControl = this.movimientoForm.controls.motivo;
+
+    if (motivoControl.dirty && motivoControl.value?.trim()) {
+      return;
+    }
+
+    const defaultMotivo =
+      tipoOperacion === 'DEVOLUCION'
+        ? 'Devolución de inventario'
+        : tipoOperacion === 'MERMA'
+          ? 'Merma de inventario'
+          : 'Ajuste operativo de inventario';
+
+    motivoControl.setValue(defaultMotivo, { emitEvent: false });
+  }
+
+  private resetMovimientoForm(): void {
+    this.movimientoForm.patchValue({
       id_usuario: this.usuarioId() ?? 0,
+      tipo_operacion: 'AJUSTE',
       tipo_ajuste: 'ENTRADA',
       cantidad: 1,
-      cantidad_actual_nueva: null
+      cantidad_actual_nueva: null,
+      id_origen: null,
+      motivo: 'Ajuste operativo de inventario'
     });
 
-    this.syncValidacionesAjuste('ENTRADA');
+    this.syncValidacionesMovimiento('AJUSTE', 'ENTRADA');
+  }
+
+  private ensureUnidadFormDefaults(): void {
+    const currentProducto = this.productoUnidadForm.controls.id_producto.value;
+    const currentUnidad = this.productoUnidadForm.controls.id_unidad.value;
+
+    if (!currentProducto && this.productosActivos().length) {
+      this.productoUnidadForm.controls.id_producto.setValue(this.productosActivos()[0].id_producto);
+    }
+
+    if (!currentUnidad && this.unidadesMedida().length) {
+      this.productoUnidadForm.controls.id_unidad.setValue(this.unidadesMedida()[0].id_unidad);
+    }
   }
 
   private extractData<T>(response: unknown): T {
@@ -491,3 +963,4 @@ export class InventarioPage implements OnInit {
     return null;
   }
 }
+

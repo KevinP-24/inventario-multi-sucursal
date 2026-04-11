@@ -17,4 +17,5 @@ export interface GuardarProductoUnidadDto {
   readonly id_unidad: number;
   readonly factor_conversion?: number;
   readonly es_base?: boolean;
+  readonly activo?: boolean;
 }

@@ -1,18 +1,628 @@
-<section class="module-page">
+<section class="compras-page">
   <app-page-header
     eyebrow="Compras"
-    title="Compras, proveedores y abastecimiento"
-    description="Base para ordenes de compra, seguimiento de proveedores y control del flujo de reposicion."
+    title="Compras y abastecimiento"
+    description="Gestiona proveedores, ordenes de compra, recepcion de mercancia e historico de abastecimiento por sucursal."
   />
 
-  <div class="module-page__grid">
-    <article>
-      <h2>Casos iniciales</h2>
-      <p>Alta de proveedores, ordenes de compra, aprobaciones y recepcion de mercancia.</p>
+  <nav class="compras-tabs" aria-label="Secciones de compras">
+    <button
+      type="button"
+      class="tab-button"
+      [class.tab-button--active]="activeSection() === 'ordenes'"
+      (click)="seleccionarSeccion('ordenes')"
+    >
+      Ordenes
+    </button>
+    <button
+      type="button"
+      class="tab-button"
+      [class.tab-button--active]="activeSection() === 'proveedores'"
+      (click)="seleccionarSeccion('proveedores')"
+    >
+      Proveedores
+    </button>
+    <button
+      type="button"
+      class="tab-button"
+      [class.tab-button--active]="activeSection() === 'historial'"
+      (click)="seleccionarSeccion('historial')"
+    >
+      Historial
+    </button>
+  </nav>
+
+  @if (errorMessage()) {
+    <div class="feedback feedback--error">{{ errorMessage() }}</div>
+  }
+
+  @if (successMessage()) {
+    <div class="feedback feedback--success">{{ successMessage() }}</div>
+  }
+
+  @if (activeSection() === 'ordenes') {
+    <section class="compras-kpis">
+      <article class="kpi-card">
+        <span class="kpi-card__label">Ordenes visibles</span>
+        <strong class="kpi-card__value">{{ totalOrdenes() }}</strong>
+      </article>
+
+      <article class="kpi-card">
+        <span class="kpi-card__label">Pendientes de recepcion</span>
+        <strong class="kpi-card__value">{{ ordenesPendientes() }}</strong>
+      </article>
+
+      <article class="kpi-card">
+        <span class="kpi-card__label">Proveedores activos</span>
+        <strong class="kpi-card__value">{{ totalProveedores() }}</strong>
+      </article>
+    </section>
+
+    <section class="catalog-layout">
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Nueva orden de compra</h2>
+            <p>Registra proveedor, sucursal destino, condiciones y detalle de productos.</p>
+          </div>
+        </header>
+
+        <form class="entry-form" [formGroup]="ordenForm" (ngSubmit)="crearOrdenCompra()">
+          <div class="form-grid">
+            <label class="field">
+              <span class="field__label">Proveedor</span>
+              <select formControlName="id_proveedor">
+                @for (proveedor of proveedoresActivos(); track proveedor.id_proveedor) {
+                  <option [value]="proveedor.id_proveedor">{{ proveedor.nombre }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="field">
+              <span class="field__label">Sucursal destino</span>
+              @if (hasFixedSucursal()) {
+                <input type="text" [value]="getSucursalNombre(ordenForm.controls.id_sucursal.value)" readonly />
+              } @else {
+                <select formControlName="id_sucursal">
+                  @for (sucursal of sucursalesActivas(); track sucursal.id_sucursal) {
+                    <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+                  }
+                </select>
+              }
+              @if (hasFixedSucursal()) {
+                <small class="field__hint">Se usa la sucursal asociada al usuario autenticado.</small>
+              }
+            </label>
+
+            <label class="field">
+              <span class="field__label">Usuario responsable</span>
+              <input type="text" [value]="usuarioNombre()" readonly />
+              <small class="field__hint">Corresponde al usuario que esta registrando la orden.</small>
+            </label>
+
+            <label class="field">
+              <span class="field__label">Plazo de pago</span>
+              <input type="text" formControlName="plazo_pago" placeholder="Ej. 30 dias" />
+            </label>
+          </div>
+
+          <div class="detail-builder">
+            <h3>Agregar producto</h3>
+
+            <div class="detail-builder__grid" [formGroup]="detalleForm">
+              <label class="field">
+                <span class="field__label">Producto</span>
+                <select formControlName="id_producto">
+                  @for (producto of productosActivos(); track producto.id_producto) {
+                    <option [value]="producto.id_producto">
+                      {{ producto.nombre }} ({{ producto.codigo }})
+                    </option>
+                  }
+                </select>
+              </label>
+
+              <label class="field">
+                <span class="field__label">Unidad</span>
+                <select formControlName="id_producto_unidad">
+                  @for (unidad of unidadesDisponiblesDetalle(); track unidad.id_producto_unidad) {
+                    <option [value]="unidad.id_producto_unidad">{{ unidad.label }}</option>
+                  }
+                </select>
+              </label>
+
+              <label class="field">
+                <span class="field__label">Cantidad</span>
+                <input type="number" formControlName="cantidad" min="0.01" step="0.01" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Precio unitario</span>
+                <input type="number" formControlName="precio_unitario" min="0.01" step="0.01" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Descuento</span>
+                <input type="number" formControlName="descuento" min="0" step="0.01" />
+              </label>
+
+              <button class="btn btn--ghost" type="button" (click)="agregarDetalleOrden()">
+                Agregar detalle
+              </button>
+            </div>
+          </div>
+
+          <div class="table-shell">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Unidad</th>
+                  <th>Cantidad</th>
+                  <th>Precio</th>
+                  <th>Descuento</th>
+                  <th>Subtotal</th>
+                  <th>Accion</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (detalle of draftDetalles(); track $index) {
+                  <tr>
+                    <td>{{ getProductoNombre(detalle.id_producto) }}</td>
+                    <td>{{ getUnidadNombre(detalle.id_producto_unidad) }}</td>
+                    <td>{{ detalle.cantidad | number: '1.0-2' }}</td>
+                    <td>{{ detalle.precio_unitario | currency: 'COP':'symbol':'1.0-0' }}</td>
+                    <td>{{ (detalle.descuento || 0) | currency: 'COP':'symbol':'1.0-0' }}</td>
+                    <td>
+                      {{
+                        detalle.cantidad * detalle.precio_unitario - (detalle.descuento || 0)
+                          | currency: 'COP':'symbol':'1.0-0'
+                      }}
+                    </td>
+                    <td>
+                      <button class="btn btn--danger" type="button" (click)="removerDetalleOrden($index)">
+                        Quitar
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="7" class="empty-cell">Aun no hay productos agregados a la orden.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="totals-strip">
+            <article class="total-card">
+              <span>Subtotal</span>
+              <strong>{{ draftSubtotal() | currency: 'COP':'symbol':'1.0-0' }}</strong>
+            </article>
+            <article class="total-card">
+              <span>Descuento total</span>
+              <strong>{{ draftDescuentoTotal() | currency: 'COP':'symbol':'1.0-0' }}</strong>
+            </article>
+            <article class="total-card">
+              <span>Total estimado</span>
+              <strong>{{ draftTotal() | currency: 'COP':'symbol':'1.0-0' }}</strong>
+            </article>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit" [disabled]="submittingOrden()">
+              {{ submittingOrden() ? 'Guardando...' : 'Crear orden' }}
+            </button>
+          </div>
+        </form>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Orden seleccionada</h2>
+            <p>Consulta detalle, estado y acciones de recepcion o anulacion.</p>
+          </div>
+          @if (loadingDetalles()) {
+            <span class="panel__meta">Cargando...</span>
+          }
+        </header>
+
+        @if (selectedOrden(); as orden) {
+          <div class="selected-card">
+            <h3>OC #{{ orden.id_orden_compra }}</h3>
+            <span>{{ orden.proveedor_nombre }}</span>
+
+            <dl class="selected-card__stats">
+              <div>
+                <dt>Estado</dt>
+                <dd>{{ orden.estado }}</dd>
+              </div>
+              <div>
+                <dt>Sucursal</dt>
+                <dd>{{ getSucursalNombre(orden.id_sucursal) }}</dd>
+              </div>
+              <div>
+                <dt>Total</dt>
+                <dd>{{ orden.total | currency: 'COP':'symbol':'1.0-0' }}</dd>
+              </div>
+              <div>
+                <dt>Plazo</dt>
+                <dd>{{ orden.plazo_pago || 'Sin definir' }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="form-actions">
+            <button
+              class="btn btn--primary"
+              type="button"
+              [disabled]="!orden.puede_recibir || receivingOrden()"
+              (click)="recibirOrdenCompra(orden)"
+            >
+              {{ receivingOrden() ? 'Procesando...' : 'Confirmar recepcion' }}
+            </button>
+            <button
+              class="btn btn--danger"
+              type="button"
+              [disabled]="!orden.puede_anular"
+              (click)="anularOrdenCompra(orden)"
+            >
+              Anular orden
+            </button>
+          </div>
+
+          <div class="mini-list">
+            @for (detalle of detallesOrdenSeleccionada(); track detalle.id_detalle_oc) {
+              <article class="mini-list__item">
+                <strong>{{ detalle.producto }}</strong>
+                <small>{{ detalle.codigo_producto }} - {{ detalle.unidad }}</small>
+                <small>
+                  Cantidad: {{ detalle.cantidad | number: '1.0-2' }} -
+                  Precio: {{ detalle.precio_unitario | currency: 'COP':'symbol':'1.0-0' }}
+                </small>
+              </article>
+            } @empty {
+              <p class="panel__empty">Selecciona una orden para consultar sus detalles.</p>
+            }
+          </div>
+        } @else {
+          <p class="panel__empty">No hay orden seleccionada.</p>
+        }
+      </article>
+    </section>
+
+    <article class="panel panel--table">
+      <header class="panel__header">
+        <div>
+          <h2>Gestion de ordenes</h2>
+          <p>Consulta las ordenes creadas y entra a la recepcion de mercancia.</p>
+        </div>
+      </header>
+
+      <div class="table-shell">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Orden</th>
+              <th>Proveedor</th>
+              <th>Sucursal</th>
+              <th>Estado</th>
+              <th>Total</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (orden of ordenesVm(); track orden.id_orden_compra) {
+              <tr
+                (click)="seleccionarOrden(orden.id_orden_compra)"
+                [class.data-table__row--active]="selectedOrdenId() === orden.id_orden_compra"
+              >
+                <td>#{{ orden.id_orden_compra }}</td>
+                <td>{{ orden.proveedor_nombre }}</td>
+                <td>{{ getSucursalNombre(orden.id_sucursal) }}</td>
+                <td>
+                  <span
+                    class="status-pill"
+                    [class.status-pill--ok]="orden.estado === 'RECIBIDA'"
+                    [class.status-pill--danger]="orden.estado === 'ANULADA'"
+                  >
+                    {{ orden.estado }}
+                  </span>
+                </td>
+                <td>{{ orden.total | currency: 'COP':'symbol':'1.0-0' }}</td>
+                <td>{{ orden.fecha || 'Sin fecha' }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="empty-cell">No hay ordenes de compra registradas.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     </article>
-    <article>
-      <h2>UI reutilizable</h2>
-      <p>Buscadores, estados de orden, formularios maestros y tablas con acciones rapidas.</p>
-    </article>
-  </div>
+  }
+
+  @if (activeSection() === 'proveedores') {
+    <section class="catalog-layout">
+      <article class="panel panel--table">
+        <header class="panel__header">
+          <div>
+            <h2>Proveedores</h2>
+            <p>Administra el maestro de proveedores para abastecimiento.</p>
+          </div>
+        </header>
+
+        <div class="table-shell">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Documento</th>
+                <th>Proveedor</th>
+                <th>Contacto</th>
+                <th>Estado</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (proveedor of proveedores(); track proveedor.id_proveedor) {
+                <tr>
+                  <td>
+                    <strong>{{ proveedor.tipo_documento?.codigo || 'DOC' }}</strong>
+                    <small>{{ proveedor.numero_documento }}</small>
+                  </td>
+                  <td>
+                    <strong>{{ proveedor.nombre }}</strong>
+                    <small>{{ proveedor.direccion || 'Sin direccion' }}</small>
+                  </td>
+                  <td>
+                    <strong>{{ proveedor.correo || 'Sin correo' }}</strong>
+                    <small>{{ proveedor.telefono || 'Sin telefono' }}</small>
+                  </td>
+                  <td>
+                    <span
+                      class="status-pill"
+                      [class.status-pill--ok]="proveedor.activo"
+                      [class.status-pill--danger]="!proveedor.activo"
+                    >
+                      {{ proveedor.activo ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="form-actions">
+                      <button class="btn btn--ghost" type="button" (click)="editarProveedor(proveedor)">
+                        Editar
+                      </button>
+                      <button
+                        class="btn"
+                        [class.btn--danger]="proveedor.activo"
+                        [class.btn--ghost]="!proveedor.activo"
+                        type="button"
+                        (click)="toggleEstadoProveedor(proveedor)"
+                      >
+                        {{ proveedor.activo ? 'Desactivar' : 'Activar' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="empty-cell">No hay proveedores registrados.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>{{ selectedProveedorId() ? 'Editar proveedor' : 'Nuevo proveedor' }}</h2>
+            <p>Registra la informacion base para crear ordenes de compra.</p>
+          </div>
+        </header>
+
+        <form class="entry-form" [formGroup]="proveedorForm" (ngSubmit)="guardarProveedor()">
+          <label class="field">
+            <span class="field__label">Tipo de documento</span>
+            <select formControlName="id_tipo_documento">
+              @for (tipo of tiposDocumentoActivos(); track tipo.id_tipo_documento) {
+                <option [value]="tipo.id_tipo_documento">{{ tipo.nombre }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Numero de documento</span>
+            <input type="text" formControlName="numero_documento" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Nombre</span>
+            <input type="text" formControlName="nombre" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Correo</span>
+            <input type="email" formControlName="correo" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Telefono</span>
+            <input type="text" formControlName="telefono" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Direccion</span>
+            <input type="text" formControlName="direccion" />
+          </label>
+
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit" [disabled]="submittingProveedor()">
+              {{ submittingProveedor() ? 'Guardando...' : (selectedProveedorId() ? 'Actualizar' : 'Crear proveedor') }}
+            </button>
+            <button class="btn btn--ghost" type="button" (click)="resetProveedorForm()">
+              Limpiar
+            </button>
+          </div>
+        </form>
+      </article>
+    </section>
+  }
+
+  @if (activeSection() === 'historial') {
+    <section class="panel panel--filters">
+      <form class="filters-form" [formGroup]="historialForm" (ngSubmit)="aplicarFiltrosHistorial()">
+        <label class="field">
+          <span class="field__label">Proveedor</span>
+          <select formControlName="id_proveedor">
+            <option [value]="0">Todos</option>
+            @for (proveedor of proveedores(); track proveedor.id_proveedor) {
+              <option [value]="proveedor.id_proveedor">{{ proveedor.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Producto</span>
+          <select formControlName="id_producto">
+            <option [value]="0">Todos</option>
+            @for (producto of productos(); track producto.id_producto) {
+              <option [value]="producto.id_producto">{{ producto.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Sucursal</span>
+          <select formControlName="id_sucursal">
+            <option [value]="0">Todas</option>
+            @for (sucursal of sucursalesActivas(); track sucursal.id_sucursal) {
+              <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Estado</span>
+          <select formControlName="estado">
+            <option value="">Todos</option>
+            <option value="CREADA">Creada</option>
+            <option value="RECIBIDA">Recibida</option>
+            <option value="ANULADA">Anulada</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Desde</span>
+          <input type="date" formControlName="fecha_desde" />
+        </label>
+
+        <label class="field">
+          <span class="field__label">Hasta</span>
+          <input type="date" formControlName="fecha_hasta" />
+        </label>
+
+        <button class="btn btn--primary" type="submit">Filtrar</button>
+      </form>
+    </section>
+
+    <section class="catalog-layout">
+      <article class="panel panel--table">
+        <header class="panel__header">
+          <div>
+            <h2>Historico de compras</h2>
+            <p>Consulta compras por proveedor, producto, sucursal, estado y fechas.</p>
+          </div>
+        </header>
+
+        <div class="table-shell">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Orden</th>
+                <th>Proveedor</th>
+                <th>Sucursal</th>
+                <th>Estado</th>
+                <th>Total</th>
+                <th>Recepcion</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (orden of historialVm(); track orden.id_orden_compra) {
+                <tr
+                  (click)="seleccionarOrden(orden.id_orden_compra)"
+                  [class.data-table__row--active]="selectedOrdenId() === orden.id_orden_compra"
+                >
+                  <td>#{{ orden.id_orden_compra }}</td>
+                  <td>{{ orden.proveedor_nombre }}</td>
+                  <td>{{ getSucursalNombre(orden.id_sucursal) }}</td>
+                  <td>{{ orden.estado }}</td>
+                  <td>{{ orden.total | currency: 'COP':'symbol':'1.0-0' }}</td>
+                  <td>{{ orden.fecha_recepcion || 'Pendiente' }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-cell">No hay registros para los filtros aplicados.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Detalle historico</h2>
+            <p>Profundiza por orden para revisar productos, costos y recepcion.</p>
+          </div>
+        </header>
+
+        @if (selectedOrden(); as orden) {
+          <div class="selected-card">
+            <h3>OC #{{ orden.id_orden_compra }}</h3>
+            <span>{{ orden.proveedor_nombre }}</span>
+
+            <dl class="selected-card__stats">
+              <div>
+                <dt>Estado</dt>
+                <dd>{{ orden.estado }}</dd>
+              </div>
+              <div>
+                <dt>Recepcion</dt>
+                <dd>{{ orden.fecha_recepcion || 'Pendiente' }}</dd>
+              </div>
+              <div>
+                <dt>Subtotal</dt>
+                <dd>{{ orden.subtotal | currency: 'COP':'symbol':'1.0-0' }}</dd>
+              </div>
+              <div>
+                <dt>Total</dt>
+                <dd>{{ orden.total | currency: 'COP':'symbol':'1.0-0' }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="mini-list">
+            @for (detalle of detallesOrdenSeleccionada(); track detalle.id_detalle_oc) {
+              <article class="mini-list__item">
+                <strong>{{ detalle.producto }}</strong>
+                <small>{{ detalle.codigo_producto }} - {{ detalle.unidad }}</small>
+                <small>
+                  Cantidad: {{ detalle.cantidad | number: '1.0-2' }} -
+                  Subtotal: {{ detalle.subtotal | currency: 'COP':'symbol':'1.0-0' }}
+                </small>
+              </article>
+            } @empty {
+              <p class="panel__empty">Selecciona una orden para consultar su historico.</p>
+            }
+          </div>
+        } @else {
+          <p class="panel__empty">No hay orden seleccionada.</p>
+        }
+      </article>
+    </section>
+  }
 </section>

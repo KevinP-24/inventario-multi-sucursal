@@ -18,4 +18,5 @@ export interface GuardarClienteDto {
   readonly nombre: string;
   readonly correo?: string | null;
   readonly telefono?: string | null;
+  readonly activo?: boolean;
 }

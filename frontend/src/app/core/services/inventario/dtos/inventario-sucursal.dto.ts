@@ -36,12 +36,14 @@ export interface AjustarInventarioDto {
   readonly tipo_ajuste: TipoAjusteInventarioDto;
   readonly cantidad?: number;
   readonly cantidad_actual_nueva?: number;
+  readonly motivo?: string | null;
 }
 
 export interface MovimientoOperativoInventarioDto {
   readonly id_usuario: number;
   readonly cantidad: number;
   readonly id_origen?: number | null;
+  readonly motivo?: string | null;
 }
 
 export interface InventarioMovimientoResultadoDto {

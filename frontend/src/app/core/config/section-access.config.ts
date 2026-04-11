@@ -35,7 +35,7 @@ export const SECTION_ACCESS_CONFIG: readonly SectionAccessConfig[] = [
     path: '/app/compras',
     icon: 'compras',
     description: 'Ordenes, proveedores y abastecimiento',
-    roles: [UserRoleDto.ADMIN_GENERAL, UserRoleDto.ADMIN_SUCURSAL, UserRoleDto.OPERARIO_INVENTARIO]
+    roles: [UserRoleDto.ADMIN_GENERAL, UserRoleDto.ADMIN_SUCURSAL]
   },
   {
     label: 'Ventas',

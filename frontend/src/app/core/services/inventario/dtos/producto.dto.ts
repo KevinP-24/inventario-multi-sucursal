@@ -12,4 +12,5 @@ export interface GuardarProductoDto {
   readonly nombre: string;
   readonly descripcion?: string | null;
   readonly stock_minimo?: number;
+  readonly activo?: boolean;
 }
