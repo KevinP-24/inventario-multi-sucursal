@@ -9,7 +9,7 @@
 
     <div class="login-highlights">
       <article>
-        <strong>Operacion centralizada</strong>
+        <strong>Operación centralizada</strong>
         <span>Un solo acceso para coordinar la actividad de todas las sucursales.</span>
       </article>
       <article>
@@ -25,63 +25,73 @@
 
   <div class="login-panel">
     <div class="login-card">
-    <div class="login-card__header">
-      <p class="login-card__eyebrow">Iniciar sesion</p>
-      <h2>Bienvenido de nuevo</h2>
-      <p>Ingresa con las credenciales asignadas para continuar en la plataforma.</p>
-    </div>
+      <div class="login-card__header">
+        <p class="login-card__eyebrow">Iniciar sesión</p>
+        <h2>Bienvenido de nuevo</h2>
+        <p>Ingresa con las credenciales asignadas para continuar en la plataforma.</p>
+      </div>
 
-    <form class="login-form" [formGroup]="loginForm" (ngSubmit)="submit()">
-      <label class="field field--floating">
-        <input
-          type="email"
-          formControlName="correo"
-          placeholder=" "
-          autocomplete="username"
-          autocapitalize="none"
-          spellcheck="false"
-        />
-        <span>Correo corporativo</span>
-      </label>
+      <form class="login-form" [formGroup]="loginForm" (ngSubmit)="submit()">
+        <label class="field field--floating">
+          <fa-icon class="field__icon" [icon]="faEnvelope" aria-hidden="true"></fa-icon>
 
-      @if (loginForm.controls.correo.touched && loginForm.controls.correo.invalid) {
-        <p class="field-error">Ingresa un correo valido.</p>
-      }
+          <input
+            type="email"
+            formControlName="correo"
+            placeholder=" "
+            autocomplete="username"
+            autocapitalize="none"
+            spellcheck="false"
+          />
 
-      <label class="field field--floating field--password">
-        <input
-          [type]="isPasswordVisible() ? 'text' : 'password'"
-          formControlName="password"
-          placeholder=" "
-          autocomplete="current-password"
-          autocapitalize="none"
-          spellcheck="false"
-        />
-        <span>Contrasena</span>
-        <button
-          class="field__toggle"
-          type="button"
-          (click)="togglePasswordVisibility()"
-          [attr.aria-label]="isPasswordVisible() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
-        >
-          <svg viewBox="0 0 640 640" aria-hidden="true">
-            <path [attr.d]="isPasswordVisible() ? eyeSlashIconPath : eyeIconPath" />
-          </svg>
+          <span>Correo corporativo</span>
+        </label>
+
+        @if (loginForm.controls.correo.touched && loginForm.controls.correo.invalid) {
+          <p class="field-error">Ingresa un correo válido.</p>
+        }
+
+        <label class="field field--floating field--password">
+          <fa-icon class="field__icon" [icon]="faLock" aria-hidden="true"></fa-icon>
+
+          <input
+            [type]="isPasswordVisible() ? 'text' : 'password'"
+            formControlName="password"
+            placeholder=" "
+            autocomplete="current-password"
+            autocapitalize="none"
+            spellcheck="false"
+          />
+
+          <span>Contraseña</span>
+
+          <button
+            class="field__toggle"
+            [class.field__toggle--active]="isPasswordVisible()"
+            type="button"
+            (click)="togglePasswordVisibility()"
+            [attr.aria-label]="isPasswordVisible() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+          >
+            <fa-icon
+              class="field__toggle-icon"
+              [icon]="isPasswordVisible() ? faEyeSlash : faEye"
+              aria-hidden="true"
+            ></fa-icon>
+          </button>
+        </label>
+
+        @if (loginForm.controls.password.touched && loginForm.controls.password.invalid) {
+          <p class="field-error">La contraseña es obligatoria.</p>
+        }
+
+        @if (submitError()) {
+          <p class="submit-error">{{ submitError() }}</p>
+        }
+
+        <button class="login-form__submit" type="submit" [disabled]="isSubmitting()">
+          {{ isSubmitting() ? 'Ingresando...' : 'Entrar al sistema' }}
         </button>
-      </label>
-
-      @if (loginForm.controls.password.touched && loginForm.controls.password.invalid) {
-        <p class="field-error">La contrasena es obligatoria.</p>
-      }
-
-      @if (submitError()) {
-        <p class="submit-error">{{ submitError() }}</p>
-      }
-
-      <button class="login-form__submit" type="submit" [disabled]="isSubmitting()">
-        {{ isSubmitting() ? 'Ingresando...' : 'Entrar al sistema' }}
-      </button>
-    </form>
-  </div>
+      </form>
+    </div>
   </div>
 </section>

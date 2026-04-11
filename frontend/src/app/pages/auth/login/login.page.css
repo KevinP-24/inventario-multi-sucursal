@@ -142,6 +142,7 @@
 }
 
 .field {
+  position: relative;
   display: grid;
   gap: 8px;
 }
@@ -150,14 +151,14 @@
   width: 100%;
   padding: 14px 16px;
   border: 1px solid rgba(23, 33, 43, 0.14);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.82);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
   color: var(--color-text);
   outline: none;
 }
 
 .field input:focus {
-  border-color: rgba(154, 92, 17, 0.6);
+  border-color: rgba(154, 92, 17, 0.58);
   box-shadow: 0 0 0 4px rgba(239, 184, 70, 0.14);
 }
 
@@ -166,17 +167,43 @@
 }
 
 .field--floating input {
-  padding: 24px 16px 12px;
+  padding: 24px 52px 12px 46px;
   transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    background 160ms ease;
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.field--floating input:focus {
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.field__icon {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  z-index: 2;
+  color: var(--ms-ink-500);
+  font-size: 0.95rem;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition:
+    color 180ms ease,
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.field--floating:focus-within .field__icon {
+  color: var(--color-accent);
+  transform: translateY(-50%) scale(1.08);
 }
 
 .field--floating span {
   position: absolute;
   top: 18px;
-  left: 16px;
+  left: 46px;
+  z-index: 1;
   color: var(--color-text-muted);
   font-weight: 600;
   pointer-events: none;
@@ -197,40 +224,52 @@
 }
 
 .field--password input {
-  padding-right: 98px;
+  padding-right: 52px;
 }
 
 .field__toggle {
   position: absolute;
   top: 50%;
-  right: 14px;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
+  right: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   border: 0;
-  border-radius: 50%;
-  background: rgba(154, 92, 17, 0.08);
-  color: var(--color-accent);
-  font-size: 0.95rem;
+  background: transparent;
+  color: var(--ms-ink-500);
   cursor: pointer;
   transform: translateY(-50%);
   transition:
-    background 160ms ease,
-    transform 160ms ease,
-    color 160ms ease;
+    color 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 
 .field__toggle:hover {
-  background: rgba(154, 92, 17, 0.16);
-  transform: translateY(-50%) scale(1.02);
+  color: var(--color-accent);
+  opacity: 1;
+  transform: translateY(-50%) scale(1.08);
 }
 
-.field__toggle svg {
-  width: 18px;
-  height: 18px;
-  fill: currentColor;
+.field__toggle:active {
+  transform: translateY(-50%) scale(0.94);
+}
+
+.field__toggle--active {
+  color: var(--color-accent);
+}
+
+.field__toggle-icon {
+  font-size: 1rem;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.field__toggle--active .field__toggle-icon {
+  transform: rotate(-8deg) scale(1.05);
 }
 
 .field-error,

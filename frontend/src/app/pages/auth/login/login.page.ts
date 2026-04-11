@@ -2,14 +2,21 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import {
+  faEnvelope,
+  faEye,
+  faEyeSlash,
+  faLock
+} from '@fortawesome/free-solid-svg-icons';
 import { Router } from '@angular/router';
 
 import { AuthSessionService } from '../../../core/services/auth/auth-session.service';
 
 @Component({
   selector: 'app-login-page',
-  imports: [CommonModule, ReactiveFormsModule],
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, FontAwesomeModule],
   templateUrl: './login.page.html',
   styleUrl: './login.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -22,12 +29,15 @@ export class LoginPage {
   protected readonly isSubmitting = signal(false);
   protected readonly isPasswordVisible = signal(false);
   protected readonly submitError = signal<string | null>(null);
-  protected readonly eyeIconPath = faEye.icon[4] as string;
-  protected readonly eyeSlashIconPath = faEyeSlash.icon[4] as string;
+
+  protected readonly faEnvelope = faEnvelope;
+  protected readonly faLock = faLock;
+  protected readonly faEye = faEye;
+  protected readonly faEyeSlash = faEyeSlash;
 
   protected readonly loginForm = this.formBuilder.nonNullable.group({
     correo: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]]
+    password: ['', [Validators.required]]
   });
 
   protected submit() {
@@ -37,9 +47,10 @@ export class LoginPage {
     }
 
     const rawValue = this.loginForm.getRawValue();
+
     const credentials = {
       correo: rawValue.correo.trim().toLowerCase(),
-      password: rawValue.password.trim()
+      password: rawValue.password
     };
 
     this.isSubmitting.set(true);
@@ -48,7 +59,7 @@ export class LoginPage {
     this.authSession.login(credentials).subscribe({
       next: () => {
         this.isSubmitting.set(false);
-        void this.router.navigate(['/app/dashboard']);
+        void this.router.navigateByUrl('/app/dashboard');
       },
       error: (error: HttpErrorResponse) => {
         this.isSubmitting.set(false);
@@ -76,6 +87,6 @@ export class LoginPage {
       return apiError.message;
     }
 
-    return 'No se pudo iniciar sesion. Verifica tus credenciales e intenta nuevamente.';
+    return 'No se pudo iniciar sesión. Verifica tus credenciales e intenta nuevamente.';
   }
 }

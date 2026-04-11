@@ -2,9 +2,9 @@ import { computed, Injectable, signal } from '@angular/core';
 import { catchError, map, Observable, of, tap } from 'rxjs';
 
 import { AuthApiService } from './auth-api.service';
-import { AuthCredentials } from './models/auth-credentials.model';
-import { AuthSession } from './models/auth-session.model';
-import { AuthUser } from './models/auth-user.model';
+import { AuthCredentialsDto } from './dtos/auth-credentials.dto';
+import { AuthSessionDto } from './dtos/auth-session.dto';
+import { AuthUserDto } from './dtos/auth-user.dto';
 
 const AUTH_STORAGE_KEY = 'multi-sucursal.auth.session';
 
@@ -12,7 +12,7 @@ const AUTH_STORAGE_KEY = 'multi-sucursal.auth.session';
   providedIn: 'root'
 })
 export class AuthSessionService {
-  private readonly sessionState = signal<AuthSession | null>(this.readStoredSession());
+  private readonly sessionState = signal<AuthSessionDto | null>(this.readStoredSession());
 
   readonly session = computed(() => this.sessionState());
   readonly currentUser = computed(() => this.sessionState()?.user ?? null);
@@ -21,7 +21,7 @@ export class AuthSessionService {
 
   constructor(private readonly authApi: AuthApiService) {}
 
-  login(credentials: AuthCredentials): Observable<AuthUser> {
+  login(credentials: AuthCredentialsDto): Observable<AuthUserDto> {
     return this.authApi.login(credentials).pipe(
       tap((response) =>
         this.saveSession({
@@ -34,7 +34,7 @@ export class AuthSessionService {
     );
   }
 
-  restoreSession(): Observable<AuthUser | null> {
+  restoreSession(): Observable<AuthUserDto | null> {
     if (!this.accessToken()) {
       return of(null);
     }
@@ -63,7 +63,7 @@ export class AuthSessionService {
     this.clearSession();
   }
 
-  private saveSession(session: AuthSession) {
+  private saveSession(session: AuthSessionDto) {
     this.sessionState.set(session);
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
   }
@@ -73,14 +73,14 @@ export class AuthSessionService {
     localStorage.removeItem(AUTH_STORAGE_KEY);
   }
 
-  private readStoredSession(): AuthSession | null {
+  private readStoredSession(): AuthSessionDto | null {
     const rawSession = localStorage.getItem(AUTH_STORAGE_KEY);
     if (!rawSession) {
       return null;
     }
 
     try {
-      return JSON.parse(rawSession) as AuthSession;
+      return JSON.parse(rawSession) as AuthSessionDto;
     } catch {
       localStorage.removeItem(AUTH_STORAGE_KEY);
       return null;

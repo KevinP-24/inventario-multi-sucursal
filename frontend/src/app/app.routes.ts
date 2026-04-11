@@ -11,7 +11,8 @@ export const routes: Routes = [
   },
   {
     path: 'login',
-    loadComponent: () => import('./pages/auth/login/login.page').then((module) => module.LoginPage)
+    loadComponent: () =>
+      import('./pages/auth/login/login.page').then((module) => module.LoginPage)
   },
   {
     path: 'app',
@@ -27,6 +28,11 @@ export const routes: Routes = [
         path: 'dashboard',
         loadComponent: () =>
           import('./pages/dashboard/dashboard.page').then((module) => module.DashboardPage)
+      },
+      {
+        path: 'operacion',
+        loadComponent: () =>
+          import('./pages/operacion/operacion.page').then((module) => module.OperacionPage)
       },
       {
         path: 'inventario',

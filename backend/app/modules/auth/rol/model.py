@@ -13,11 +13,20 @@ class Rol(db.Model):
 
     usuarios = db.relationship("Usuario", back_populates="rol", lazy=True)
 
+    def obtener_codigo_rol(self):
+        mapa = {
+            "Admin general": "ADMIN_GENERAL",
+            "Admin sucursal": "ADMIN_SUCURSAL",
+            "Operario de inventario": "OPERARIO_INVENTARIO",
+        }
+        return mapa.get(self.nombre)
+
     def convertir_a_diccionario(self):
         """Devuelve el rol en formato facil de convertir a JSON."""
         return {
             "id_rol": self.id_rol,
             "nombre": self.nombre,
+            "codigo": self.obtener_codigo_rol(),
             "descripcion": self.descripcion,
             "activo": self.activo,
         }

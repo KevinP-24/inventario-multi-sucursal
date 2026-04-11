@@ -1,6 +1,9 @@
+import { UserRole } from './user-role.model';
+
 export interface AuthRole {
   readonly id_rol: number;
   readonly nombre: string;
+  readonly codigo: UserRole | null;
   readonly descripcion?: string | null;
   readonly activo?: boolean;
 }
