@@ -1,18 +1,251 @@
-<section class="module-page">
+<section class="inventario-page">
   <app-page-header
     eyebrow="Inventario"
-    title="Inventario por sucursal y movimientos"
-    description="Pagina base para construir catalogo de productos, existencias, kardex, ajustes y alertas operativas."
+    title="Operación de inventario"
+    description="Consulta existencias por sucursal, revisa alertas de stock bajo y registra entradas, salidas o ajustes."
   />
 
-  <div class="module-page__grid">
-    <article>
-      <h2>Bloques sugeridos</h2>
-      <p>Productos, unidades, listas de precio, stock por sucursal y movimientos.</p>
+  <section class="inventario-kpis">
+    <article class="kpi-card">
+      <span class="kpi-card__label">Referencias visibles</span>
+      <strong class="kpi-card__value">{{ totalReferencias() }}</strong>
     </article>
-    <article>
-      <h2>Primeros componentes</h2>
-      <p>Tabla de inventario, filtros, formulario de producto y timeline de movimientos.</p>
+
+    <article class="kpi-card">
+      <span class="kpi-card__label">Unidades visibles</span>
+      <strong class="kpi-card__value">{{ totalUnidades() | number: '1.0-2' }}</strong>
     </article>
-  </div>
+
+    <article class="kpi-card" [class.kpi-card--danger]="totalBajoStock() > 0">
+      <span class="kpi-card__label">Bajo stock</span>
+      <strong class="kpi-card__value">{{ totalBajoStock() }}</strong>
+    </article>
+  </section>
+
+  <section class="panel panel--filters">
+    <form class="filters-form" [formGroup]="filtroForm" (ngSubmit)="aplicarFiltros()">
+      <label class="field">
+        <span class="field__label">Sucursal</span>
+        <select formControlName="id_sucursal">
+          <option [value]="0">Todas</option>
+          @for (idSucursal of sucursalesDisponibles(); track idSucursal) {
+            <option [value]="idSucursal">Sucursal {{ idSucursal }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="field field--grow">
+        <span class="field__label">Buscar producto</span>
+        <input formControlName="busqueda" type="text" placeholder="Nombre o código" />
+      </label>
+
+      <label class="checkbox-field">
+        <input formControlName="solo_bajo_stock" type="checkbox" />
+        <span>Solo bajo stock</span>
+      </label>
+
+      <button class="btn btn--primary" type="submit">Aplicar</button>
+      <button class="btn btn--ghost" type="button" (click)="cargarVista()">Recargar</button>
+    </form>
+  </section>
+
+  @if (errorMessage()) {
+    <div class="feedback feedback--error">{{ errorMessage() }}</div>
+  }
+
+  @if (successMessage()) {
+    <div class="feedback feedback--success">{{ successMessage() }}</div>
+  }
+
+  <section class="inventario-layout">
+    <article class="panel panel--table">
+      <header class="panel__header">
+        <div>
+          <h2>Inventario por sucursal</h2>
+          <p>Vista operativa del stock disponible y los productos que requieren atención.</p>
+        </div>
+        @if (loading()) {
+          <span class="panel__meta">Cargando...</span>
+        }
+      </header>
+
+      <div class="table-shell">
+        <table class="inventory-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Sucursal</th>
+              <th>Stock</th>
+              <th>Mínimo</th>
+              <th>Estado</th>
+              <th>Costo promedio</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of inventarioVisible(); track item.id_inventario) {
+              <tr
+                (click)="seleccionarInventario(item.id_inventario)"
+                [class.inventory-table__row--active]="selectedInventarioId() === item.id_inventario"
+              >
+                <td>
+                  <strong>{{ item.producto }}</strong>
+                  <small>{{ item.codigo_producto }}</small>
+                </td>
+                <td>Sucursal {{ item.id_sucursal }}</td>
+                <td>{{ item.cantidad_actual | number: '1.0-2' }}</td>
+                <td>{{ item.stock_minimo | number: '1.0-2' }}</td>
+                <td>
+                  <span
+                    class="status-pill"
+                    [class.status-pill--danger]="item.bajo_stock"
+                    [class.status-pill--ok]="!item.bajo_stock"
+                  >
+                    {{ item.bajo_stock ? 'Bajo stock' : 'Estable' }}
+                  </span>
+                </td>
+                <td>{{ item.costo_promedio | currency: 'COP':'symbol':'1.0-0' }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="empty-cell">No hay registros para el filtro aplicado.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <aside class="inventario-side">
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Producto seleccionado</h2>
+            <p>Registro operativo sobre la existencia actual.</p>
+          </div>
+        </header>
+
+        @if (inventarioSeleccionado(); as selected) {
+          <div class="selected-card">
+            <h3>{{ selected.producto }}</h3>
+            <span>{{ selected.codigo_producto }}</span>
+
+            <dl class="selected-card__stats">
+              <div>
+                <dt>Sucursal</dt>
+                <dd>{{ selected.id_sucursal }}</dd>
+              </div>
+              <div>
+                <dt>Stock actual</dt>
+                <dd>{{ selected.cantidad_actual | number: '1.0-2' }}</dd>
+              </div>
+              <div>
+                <dt>Stock mínimo</dt>
+                <dd>{{ selected.stock_minimo | number: '1.0-2' }}</dd>
+              </div>
+              <div>
+                <dt>Costo promedio</dt>
+                <dd>{{ selected.costo_promedio | currency: 'COP':'symbol':'1.0-0' }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <form class="adjust-form" [formGroup]="ajusteForm" (ngSubmit)="registrarAjuste()">
+            <label class="field">
+              <span class="field__label">Usuario responsable</span>
+              <input type="number" formControlName="id_usuario" />
+            </label>
+
+            <label class="field">
+              <span class="field__label">Tipo de ajuste</span>
+              <select formControlName="tipo_ajuste">
+                <option value="ENTRADA">Entrada</option>
+                <option value="SALIDA">Salida</option>
+                <option value="AJUSTE">Ajuste directo</option>
+              </select>
+            </label>
+
+            @if (ajusteForm.controls.tipo_ajuste.value !== 'AJUSTE') {
+              <label class="field">
+                <span class="field__label">Cantidad</span>
+                <input type="number" min="0.01" step="0.01" formControlName="cantidad" />
+              </label>
+            }
+
+            @if (ajusteForm.controls.tipo_ajuste.value === 'AJUSTE') {
+              <label class="field">
+                <span class="field__label">Nuevo stock actual</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  formControlName="cantidad_actual_nueva"
+                />
+              </label>
+            }
+
+            <button class="btn btn--primary btn--full" type="submit" [disabled]="submitting()">
+              {{ submitting() ? 'Guardando...' : 'Registrar movimiento' }}
+            </button>
+          </form>
+        } @else {
+          <p class="panel__empty">Selecciona un registro del inventario para operar.</p>
+        }
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Alertas</h2>
+            <p>Productos por debajo del mínimo configurado.</p>
+          </div>
+        </header>
+
+        <div class="alerts-list">
+          @for (alerta of alertas(); track alerta.id_inventario) {
+            <article class="alert-card">
+              <strong>{{ alerta.producto || ('Producto #' + alerta.id_producto) }}</strong>
+              <span>Sucursal {{ alerta.id_sucursal }}</span>
+              <small>
+                Actual: {{ alerta.cantidad_actual | number: '1.0-2' }} ·
+                Mínimo: {{ alerta.stock_minimo | number: '1.0-2' }}
+              </small>
+            </article>
+          } @empty {
+            <p class="panel__empty">No hay alertas activas para el filtro actual.</p>
+          }
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Historial de movimientos</h2>
+            <p>Trazabilidad del inventario seleccionado.</p>
+          </div>
+          @if (loadingMovimientos()) {
+            <span class="panel__meta">Cargando...</span>
+          }
+        </header>
+
+        <div class="timeline">
+          @for (mov of movimientos(); track mov.id_movimiento) {
+            <article class="timeline__item">
+              <div class="timeline__bullet"></div>
+              <div class="timeline__content">
+                <strong>{{ mov.motivo || 'Movimiento inventario' }}</strong>
+                <small>
+                  Cantidad: {{ mov.cantidad | number: '1.0-2' }} ·
+                  Usuario: {{ mov.id_usuario }} ·
+                  Tipo: {{ mov.id_tipo_movimiento || '-' }}
+                </small>
+                <span>{{ mov.fecha_hora || 'Sin fecha' }}</span>
+              </div>
+            </article>
+          } @empty {
+            <p class="panel__empty">Este inventario aún no tiene movimientos visibles.</p>
+          }
+        </div>
+      </article>
+    </aside>
+  </section>
 </section>

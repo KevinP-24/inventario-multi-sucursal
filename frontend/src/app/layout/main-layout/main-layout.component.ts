@@ -56,10 +56,54 @@ export class MainLayoutComponent {
     initialValue: initialApiState
   });
 
+  protected readonly resolvedRole = computed(() => {
+    const user = this.currentUser();
+
+    const roleCode = user?.rol?.codigo?.trim?.().toUpperCase?.();
+    if (roleCode) {
+      return roleCode;
+    }
+
+    const roleName = user?.rol?.nombre?.trim?.().toLowerCase?.();
+
+    if (roleName === 'administrador general') {
+      return 'ADMIN_GENERAL';
+    }
+
+    if (roleName === 'administrador de sucursal' || roleName === 'admin sucursal') {
+      return 'ADMIN_SUCURSAL';
+    }
+
+    if (roleName === 'operario de inventario' || roleName === 'operador de inventario') {
+      return 'OPERARIO_INVENTARIO';
+    }
+
+    const roleId = user?.id_rol ?? user?.rol?.id_rol ?? null;
+
+    if (roleId === 1) {
+      return 'ADMIN_GENERAL';
+    }
+
+    if (roleId === 2) {
+      return 'ADMIN_SUCURSAL';
+    }
+
+    if (roleId === 3) {
+      return 'OPERARIO_INVENTARIO';
+    }
+
+    return null;
+  });
+
   protected readonly navigationItems = computed(() =>
-    getNavigationItemsByRole(this.currentUser()?.rol?.codigo ?? null)
+    getNavigationItemsByRole(this.resolvedRole())
   );
 
+  constructor() {
+    console.log('USER', this.currentUser?.());
+    console.log('ROLE RESOLVED', this.resolvedRole());
+    console.log('NAV ITEMS', this.navigationItems());
+  }
   private readonly currentUrl = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),

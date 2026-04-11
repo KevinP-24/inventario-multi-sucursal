@@ -2,33 +2,40 @@
   --sidebar-collapsed-width: 92px;
   --sidebar-expanded-width: 320px;
 
-  display: grid;
-  grid-template-columns: var(--sidebar-collapsed-width) minmax(0, 1fr);
-  min-height: 100vh;
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), transparent 32%),
     linear-gradient(135deg, #eef3f0 0%, #f8f5ef 52%, #e6ece9 100%);
-  transition: grid-template-columns 220ms ease;
-}
-
-.workspace-shell:has(.workspace-shell__sidebar:hover) {
-  grid-template-columns: var(--sidebar-expanded-width) minmax(0, 1fr);
 }
 
 .workspace-shell__sidebar {
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--sidebar-collapsed-width);
+  height: 100vh;
+  z-index: 30;
   overflow: hidden;
   border-right: 1px solid var(--color-border);
   background: linear-gradient(180deg, rgba(11, 17, 26, 0.98), rgba(13, 24, 38, 0.98));
   color: #f7f7f2;
+  transition: width 220ms ease;
+}
+
+.workspace-shell__sidebar:hover {
+  width: var(--sidebar-expanded-width);
 }
 
 .sidebar-inner {
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
   gap: 18px;
-  min-height: 100vh;
+  height: 100%;
   padding: 20px 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .brand,
@@ -273,6 +280,7 @@
 .sidebar-footer {
   display: grid;
   gap: 12px;
+  align-content: end;
 }
 
 .sidebar-footer__status {
@@ -317,21 +325,33 @@
 }
 
 .workspace-shell__content {
+  margin-left: var(--sidebar-collapsed-width);
+  height: 100vh;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: grid;
   grid-template-rows: auto 1fr;
-  min-width: 0;
+  transition: margin-left 220ms ease;
+}
+
+.workspace-shell:has(.workspace-shell__sidebar:hover) .workspace-shell__content {
+  margin-left: var(--sidebar-expanded-width);
 }
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   justify-content: space-between;
   gap: 24px;
   padding: 28px clamp(20px, 4vw, 40px) 14px;
+  background: var(--color-background);
 }
 
-.topbar__content {
-  display: grid;
-  gap: 8px;
+.page-content {
+  padding: 12px clamp(20px, 4vw, 40px) 40px;
 }
 
 .topbar__copy {
@@ -345,19 +365,90 @@
   padding: 12px clamp(20px, 4vw, 40px) 40px;
 }
 
+/* ===== ESTADO COLAPSADO ===== */
+
+.workspace-shell__sidebar:not(:hover) .sidebar-inner {
+  justify-items: center;
+  padding-inline: 0;
+}
+
+.workspace-shell__sidebar:not(:hover) .brand,
+.workspace-shell__sidebar:not(:hover) .user-card,
+.workspace-shell__sidebar:not(:hover) .nav__item,
+.workspace-shell__sidebar:not(:hover) .logout-button {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  width: 68px;
+  min-width: 68px;
+  max-width: 68px;
+  padding: 0;
+  margin-inline: auto;
+}
+
+.workspace-shell__sidebar:not(:hover) .brand {
+  min-height: 56px;
+}
+
+.workspace-shell__sidebar:not(:hover) .user-card {
+  min-height: 68px;
+  padding-block: 0;
+}
+
+.workspace-shell__sidebar:not(:hover) .nav__item,
+.workspace-shell__sidebar:not(:hover) .logout-button {
+  min-height: 68px;
+}
+
+.workspace-shell__sidebar:not(:hover) .nav {
+  justify-items: center;
+  width: 100%;
+}
+
+.workspace-shell__sidebar:not(:hover) .brand__mark,
+.workspace-shell__sidebar:not(:hover) .user-card__avatar,
+.workspace-shell__sidebar:not(:hover) .nav__icon,
+.workspace-shell__sidebar:not(:hover) .logout-button__icon {
+  margin: 0;
+  place-self: center;
+}
+
+.workspace-shell__sidebar:not(:hover) .brand__text,
+.workspace-shell__sidebar:not(:hover) .user-card__content,
+.workspace-shell__sidebar:not(:hover) .nav__content,
+.workspace-shell__sidebar:not(:hover) .logout-button__text {
+  display: none;
+}
+
 @media (max-width: 980px) {
-  .workspace-shell,
-  .workspace-shell:has(.workspace-shell__sidebar:hover) {
-    grid-template-columns: 1fr;
+  .workspace-shell {
+    height: auto;
+    overflow: visible;
   }
 
   .workspace-shell__sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
     border-right: 0;
     border-bottom: 1px solid var(--color-border);
   }
 
+  .workspace-shell__sidebar:hover {
+    width: 100%;
+  }
+
+  .workspace-shell__content,
+  .workspace-shell:has(.workspace-shell__sidebar:hover) .workspace-shell__content {
+    margin-left: 0;
+    height: auto;
+    overflow: visible;
+  }
+
   .sidebar-inner {
+    grid-template-rows: auto auto auto;
     min-height: auto;
+    height: auto;
+    overflow: visible;
   }
 
   .brand,
@@ -383,6 +474,7 @@
   }
 
   .topbar {
+    position: static;
     flex-direction: column;
   }
 }
