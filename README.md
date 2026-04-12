@@ -208,6 +208,8 @@ Si los archivos se ubican en una carpeta `docs/`, solo ajusta las rutas en el re
 docker compose up --build
 ```
 
+Para el entorno local de prueba no es necesario crear archivos de entorno manualmente. Las variables requeridas por PostgreSQL y Flask ya están definidas en [docker-compose.yml](/d:/Proyectos/multi-sucursal/docker-compose.yml).
+
 También se puede levantar todo con el script raíz:
 ```bash
 npm run dev
@@ -240,7 +242,7 @@ El frontend consume la API desde `http://localhost:5000/api/v1`.
 ### 10.4 Consideraciones
 - La solución está pensada para ejecutarse con un solo comando.
 - Frontend, backend y base de datos deben levantarse como servicios independientes.
-- Si el proyecto utiliza archivos de entorno, deben configurarse antes de la ejecución.
+- La ejecución con Docker Compose no depende de configuración manual del entorno local.
 
 ---
 
