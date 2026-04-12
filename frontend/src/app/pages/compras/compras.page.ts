@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -10,7 +11,9 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { finalize, forkJoin } from 'rxjs';
+import { catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { faPenToSquare, faToggleOff, faToggleOn } from '@fortawesome/free-solid-svg-icons';
 
 import { ComprasApiService } from '../../core/services/compras/compras-api.service';
 import { AuthSessionService } from '../../core/services/auth/auth-session.service';
@@ -55,7 +58,7 @@ interface DetalleOrdenVm extends DetalleOrdenCompraDto {
 @Component({
   selector: 'app-compras-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PageHeaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, PageHeaderComponent, FontAwesomeModule],
   templateUrl: './compras.page.html',
   styleUrl: './compras.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -69,6 +72,9 @@ export class ComprasPage implements OnInit {
   private readonly sucursalesApi = inject(SucursalesApiService);
   private readonly tiposDocumentoApi = inject(TiposDocumentoApiService);
   private readonly uiAlerts = inject(UiAlertService);
+  protected readonly faPenToSquare = faPenToSquare;
+  protected readonly faToggleOn = faToggleOn;
+  protected readonly faToggleOff = faToggleOff;
 
   readonly activeSection = signal<ComprasSection>('ordenes');
   readonly loading = signal(false);
@@ -76,6 +82,8 @@ export class ComprasPage implements OnInit {
   readonly submittingOrden = signal(false);
   readonly submittingProveedor = signal(false);
   readonly receivingOrden = signal(false);
+  readonly sugiriendoPrecio = signal(false);
+  readonly ultimoPrecioSugerido = signal<number | null>(null);
   readonly errorMessage = signal('');
   readonly successMessage = signal('');
 
@@ -107,19 +115,40 @@ export class ComprasPage implements OnInit {
     this.productoUnidades().filter(item => item.activo)
   );
 
-  readonly unidadesDisponiblesDetalle = computed(() => {
+  readonly productosDisponiblesDetalle = computed(() => {
+    const productosConUnidad = new Set(
+      this.productoUnidadesActivas().map(item => Number(item.id_producto))
+    );
+
+    return this.productosActivos().filter(item =>
+      productosConUnidad.has(Number(item.id_producto))
+    );
+  });
+
+  protected unidadesDisponiblesDetalle(): Array<{
+    id_producto_unidad: number;
+    label: string;
+  }> {
     const idProducto = Number(this.detalleForm.controls.id_producto.value || 0);
+
     if (!idProducto) {
       return [];
     }
 
     return this.productoUnidadesActivas()
-      .filter(item => item.id_producto === idProducto)
+      .filter(item => Number(item.id_producto) === idProducto)
+      .sort((a, b) => {
+        if (a.es_base === b.es_base) {
+          return Number(a.id_producto_unidad) - Number(b.id_producto_unidad);
+        }
+
+        return a.es_base ? -1 : 1;
+      })
       .map(item => ({
-        id_producto_unidad: item.id_producto_unidad,
+        id_producto_unidad: Number(item.id_producto_unidad),
         label: `${item.unidad_medida?.nombre ?? 'Unidad'} (${item.unidad_medida?.simbolo ?? '-'})`
       }));
-  });
+  }
 
   readonly ordenesVm = computed<OrdenCompraVm[]>(() => {
     const proveedoresMap = new Map(this.proveedores().map(item => [item.id_proveedor, item]));
@@ -212,13 +241,42 @@ export class ComprasPage implements OnInit {
     this.detalleForm.controls.id_producto.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(idProducto => {
+        const productoId = Number(idProducto || 0);
+
         const unidades = this.productoUnidadesActivas().filter(
-          item => item.id_producto === Number(idProducto || 0)
+          item => Number(item.id_producto) === productoId
         );
+
         this.detalleForm.controls.id_producto_unidad.setValue(
-          unidades[0]?.id_producto_unidad ?? 0,
+          Number(unidades[0]?.id_producto_unidad ?? 0),
           { emitEvent: false }
         );
+
+        this.detalleForm.controls.precio_unitario.setValue(0, { emitEvent: false });
+        this.detalleForm.controls.precio_unitario.markAsPristine();
+        this.ultimoPrecioSugerido.set(null);
+
+        this.sugerirUltimoPrecioCompra();
+      });
+
+    this.detalleForm.controls.id_producto_unidad.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.detalleForm.controls.precio_unitario.setValue(0, { emitEvent: false });
+        this.detalleForm.controls.precio_unitario.markAsPristine();
+        this.ultimoPrecioSugerido.set(null);
+
+        this.sugerirUltimoPrecioCompra();
+      });
+
+    this.ordenForm.controls.id_proveedor.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.detalleForm.controls.precio_unitario.setValue(0, { emitEvent: false });
+        this.detalleForm.controls.precio_unitario.markAsPristine();
+        this.ultimoPrecioSugerido.set(null);
+
+        this.sugerirUltimoPrecioCompra();
       });
   }
 
@@ -320,6 +378,14 @@ export class ComprasPage implements OnInit {
     }
 
     const value = this.detalleForm.getRawValue();
+
+    if (!Number(value.id_producto_unidad)) {
+      void this.uiAlerts.warning(
+        'El producto seleccionado no tiene una unidad activa disponible para compra.'
+      );
+      return;
+    }
+
     const detalle: CrearDetalleOrdenCompraDto = {
       id_producto: Number(value.id_producto),
       id_producto_unidad: Number(value.id_producto_unidad),
@@ -452,6 +518,7 @@ export class ComprasPage implements OnInit {
     const value = this.proveedorForm.getRawValue();
     const proveedorActual =
       this.proveedores().find(item => item.id_proveedor === this.selectedProveedorId()) ?? null;
+
     const payload: GuardarProveedorDto = {
       id_tipo_documento: Number(value.id_tipo_documento),
       numero_documento: value.numero_documento.trim(),
@@ -473,7 +540,8 @@ export class ComprasPage implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.successMessage.set(
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
             this.selectedProveedorId()
               ? 'Proveedor actualizado correctamente.'
               : 'Proveedor creado correctamente.'
@@ -482,8 +550,11 @@ export class ComprasPage implements OnInit {
           this.cargarVista();
           this.activeSection.set('proveedores');
         },
-        error: () => {
-          this.errorMessage.set('No se pudo guardar el proveedor.');
+        error: (error: HttpErrorResponse) => {
+          this.errorMessage.set('');
+          void this.uiAlerts.error(
+            this.resolveApiError(error, 'No se pudo guardar el proveedor.')
+          );
         }
       });
   }
@@ -517,7 +588,8 @@ export class ComprasPage implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.successMessage.set(
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
             nextActivo
               ? 'Proveedor activado correctamente.'
               : 'Proveedor desactivado correctamente.'
@@ -528,14 +600,16 @@ export class ComprasPage implements OnInit {
           this.cargarVista();
           this.activeSection.set('proveedores');
         },
-        error: () => {
-          this.errorMessage.set(
-            nextActivo ? 'No se pudo activar el proveedor.' : 'No se pudo desactivar el proveedor.'
+        error: (error: HttpErrorResponse) => {
+          this.errorMessage.set('');
+          void this.uiAlerts.error(
+            nextActivo
+              ? this.resolveApiError(error, 'No se pudo activar el proveedor.')
+              : this.resolveApiError(error, 'No se pudo desactivar el proveedor.')
           );
         }
       });
   }
-
   aplicarFiltrosHistorial(): void {
     this.loading.set(true);
     this.errorMessage.set('');
@@ -600,18 +674,99 @@ export class ComprasPage implements OnInit {
   }
 
   private resetDetalleForm(): void {
-    const firstProducto = this.productosActivos()[0];
+    const firstProducto = this.productosDisponiblesDetalle()[0];
     const firstUnidad = this.productoUnidadesActivas().find(
-      item => item.id_producto === firstProducto?.id_producto
+      item => Number(item.id_producto) === Number(firstProducto?.id_producto ?? 0)
     );
 
     this.detalleForm.reset({
-      id_producto: firstProducto?.id_producto ?? 0,
-      id_producto_unidad: firstUnidad?.id_producto_unidad ?? 0,
+      id_producto: Number(firstProducto?.id_producto ?? 0),
+      id_producto_unidad: Number(firstUnidad?.id_producto_unidad ?? 0),
       cantidad: 1,
       precio_unitario: 0,
       descuento: 0
     });
+
+    this.detalleForm.controls.precio_unitario.markAsPristine();
+    this.ultimoPrecioSugerido.set(null);
+    this.sugerirUltimoPrecioCompra();
+  }
+
+  private sugerirUltimoPrecioCompra(): void {
+    const idProveedor = Number(this.ordenForm.controls.id_proveedor.value || 0);
+    const idProducto = Number(this.detalleForm.controls.id_producto.value || 0);
+    const idProductoUnidad = Number(this.detalleForm.controls.id_producto_unidad.value || 0);
+
+    if (!idProveedor || !idProducto || !idProductoUnidad) {
+      this.ultimoPrecioSugerido.set(null);
+      return;
+    }
+
+    this.sugiriendoPrecio.set(true);
+
+    this.comprasApi.ordenesCompra
+      .filtrarHistorialCompras({
+        id_proveedor: idProveedor,
+        id_producto: idProducto,
+        estado: 'RECIBIDA'
+      })
+      .pipe(
+        switchMap(response => {
+          const historial = this.extractData<OrdenCompraDto[]>(response)
+            .filter(item => item.estado === 'RECIBIDA')
+            .sort((a, b) => {
+              const fechaA = new Date(a.fecha_recepcion || a.fecha || '').getTime();
+              const fechaB = new Date(b.fecha_recepcion || b.fecha || '').getTime();
+              return fechaB - fechaA;
+            });
+
+          if (!historial.length) {
+            return of(null);
+          }
+
+          const consultas = historial.slice(0, 5).map(orden =>
+            this.comprasApi.detallesOrdenCompra
+              .listarDetallesPorOrdenCompra(orden.id_orden_compra)
+              .pipe(
+                map(responseDetalles => {
+                  const detalles = this.extractData<DetalleOrdenCompraDto[]>(responseDetalles);
+                  const detalle = detalles.find(
+                    item =>
+                      Number(item.id_producto) === idProducto &&
+                      Number(item.id_producto_unidad) === idProductoUnidad
+                  );
+
+                  return detalle?.precio_unitario ?? null;
+                }),
+                catchError(() => of(null))
+              )
+          );
+
+          return forkJoin(consultas).pipe(
+            map(precios => precios.find(precio => precio !== null) ?? null)
+          );
+        }),
+        finalize(() => this.sugiriendoPrecio.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: precio => {
+          this.ultimoPrecioSugerido.set(precio);
+
+          if (
+            precio !== null &&
+            (!this.detalleForm.controls.precio_unitario.dirty ||
+              Number(this.detalleForm.controls.precio_unitario.value || 0) === 0)
+          ) {
+            this.detalleForm.controls.precio_unitario.setValue(Number(precio), {
+              emitEvent: false
+            });
+          }
+        },
+        error: () => {
+          this.ultimoPrecioSugerido.set(null);
+        }
+      });
   }
 
   private ensureDefaults(): void {
@@ -625,7 +780,7 @@ export class ComprasPage implements OnInit {
       );
     }
 
-    if (!this.detalleForm.controls.id_producto.value && this.productosActivos().length) {
+    if (!this.detalleForm.controls.id_producto.value && this.productosDisponiblesDetalle().length) {
       this.resetDetalleForm();
     }
   }
@@ -661,8 +816,9 @@ export class ComprasPage implements OnInit {
 
   protected getUnidadNombre(idProductoUnidad: number): string {
     return (
-      this.productoUnidadesActivas().find(item => item.id_producto_unidad === idProductoUnidad)
-        ?.unidad_medida?.nombre ?? `Unidad #${idProductoUnidad}`
+      this.productoUnidadesActivas().find(
+        item => Number(item.id_producto_unidad) === Number(idProductoUnidad)
+      )?.unidad_medida?.nombre ?? `Unidad #${idProductoUnidad}`
     );
   }
 
@@ -675,6 +831,22 @@ export class ComprasPage implements OnInit {
       this.sucursales().find(item => item.id_sucursal === idSucursal)?.nombre ??
       `Sucursal #${idSucursal}`
     );
+  }
+
+  private resolveApiError(error: HttpErrorResponse, fallback: string): string {
+    const apiError = error.error as
+      | { message?: string; errors?: Record<string, string | readonly string[]> }
+      | null;
+
+    const detailErrors = apiError?.errors
+      ? Object.values(apiError.errors)
+          .flatMap(item => (Array.isArray(item) ? item : [item]))
+          .join(' ')
+      : '';
+
+    return [detailErrors, apiError?.message, fallback].find(
+      item => typeof item === 'string' && item.trim() !== ''
+    ) as string;
   }
 
   private extractData<T>(response: unknown): T {

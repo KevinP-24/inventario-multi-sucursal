@@ -113,21 +113,29 @@
               <label class="field">
                 <span class="field__label">Producto</span>
                 <select formControlName="id_producto">
-                  @for (producto of productosActivos(); track producto.id_producto) {
+                  @for (producto of productosDisponiblesDetalle(); track producto.id_producto) {
                     <option [value]="producto.id_producto">
                       {{ producto.nombre }} ({{ producto.codigo }})
                     </option>
                   }
                 </select>
+                <small class="field__hint">
+                  Solo se muestran productos con al menos una unidad activa configurada.
+                </small>
               </label>
 
               <label class="field">
                 <span class="field__label">Unidad</span>
-                <select formControlName="id_producto_unidad">
+                <select formControlName="id_producto_unidad" [disabled]="!unidadesDisponiblesDetalle().length">
                   @for (unidad of unidadesDisponiblesDetalle(); track unidad.id_producto_unidad) {
                     <option [value]="unidad.id_producto_unidad">{{ unidad.label }}</option>
                   }
                 </select>
+                @if (!unidadesDisponiblesDetalle().length) {
+                  <small class="field__hint">
+                    El producto seleccionado no tiene unidades activas disponibles.
+                  </small>
+                }
               </label>
 
               <label class="field">
@@ -136,8 +144,11 @@
               </label>
 
               <label class="field">
-                <span class="field__label">Precio unitario</span>
+                <span class="field__label">Precio unitario de compra</span>
                 <input type="number" formControlName="precio_unitario" min="0.01" step="0.01" />
+                <small class="field__hint">
+                  Se sugiere según la última compra recibida del proveedor para este producto, pero puedes cambiarlo.
+                </small>
               </label>
 
               <label class="field">
@@ -252,24 +263,32 @@
             </dl>
           </div>
 
-          <div class="form-actions">
-            <button
-              class="btn btn--primary"
-              type="button"
-              [disabled]="!orden.puede_recibir || receivingOrden()"
-              (click)="recibirOrdenCompra(orden)"
-            >
-              {{ receivingOrden() ? 'Procesando...' : 'Confirmar recepcion' }}
-            </button>
-            <button
-              class="btn btn--danger"
-              type="button"
-              [disabled]="!orden.puede_anular"
-              (click)="anularOrdenCompra(orden)"
-            >
-              Anular orden
-            </button>
-          </div>
+          @if (orden.estado === 'CREADA') {
+            <div class="form-actions">
+              @if (orden.puede_recibir) {
+                <button
+                  class="btn btn--primary"
+                  type="button"
+                  [disabled]="receivingOrden()"
+                  (click)="recibirOrdenCompra(orden)"
+                >
+                  {{ receivingOrden() ? 'Procesando...' : 'Confirmar recepcion' }}
+                </button>
+              }
+
+              @if (orden.puede_anular) {
+                <button
+                  class="btn btn--danger"
+                  type="button"
+                  (click)="anularOrdenCompra(orden)"
+                >
+                  Anular orden
+                </button>
+              }
+            </div>
+          } @else {
+            <p class="panel__meta">Esta orden ya fue cerrada y no tiene acciones disponibles.</p>
+          }
 
           <div class="mini-list">
             @for (detalle of detallesOrdenSeleccionada(); track detalle.id_detalle_oc) {
@@ -357,9 +376,12 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>Documento</th>
-                <th>Proveedor</th>
-                <th>Contacto</th>
+                <th>Tipo doc</th>
+                <th>Numero</th>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Telefono</th>
+                <th>Direccion</th>
                 <th>Estado</th>
                 <th>Accion</th>
               </tr>
@@ -367,18 +389,12 @@
             <tbody>
               @for (proveedor of proveedores(); track proveedor.id_proveedor) {
                 <tr>
-                  <td>
-                    <strong>{{ proveedor.tipo_documento?.codigo || 'DOC' }}</strong>
-                    <small>{{ proveedor.numero_documento }}</small>
-                  </td>
-                  <td>
-                    <strong>{{ proveedor.nombre }}</strong>
-                    <small>{{ proveedor.direccion || 'Sin direccion' }}</small>
-                  </td>
-                  <td>
-                    <strong>{{ proveedor.correo || 'Sin correo' }}</strong>
-                    <small>{{ proveedor.telefono || 'Sin telefono' }}</small>
-                  </td>
+                  <td>{{ proveedor.tipo_documento?.codigo || 'DOC' }}</td>
+                  <td>{{ proveedor.numero_documento }}</td>
+                  <td>{{ proveedor.nombre }}</td>
+                  <td>{{ proveedor.correo || 'Sin correo' }}</td>
+                  <td>{{ proveedor.telefono || 'Sin telefono' }}</td>
+                  <td>{{ proveedor.direccion || 'Sin direccion' }}</td>
                   <td>
                     <span
                       class="status-pill"
@@ -388,26 +404,35 @@
                       {{ proveedor.activo ? 'Activo' : 'Inactivo' }}
                     </span>
                   </td>
-                  <td>
-                    <div class="form-actions">
-                      <button class="btn btn--ghost" type="button" (click)="editarProveedor(proveedor)">
-                        Editar
-                      </button>
+                  <td class="actions-cell">
+                    <div class="actions-group">
                       <button
-                        class="btn"
-                        [class.btn--danger]="proveedor.activo"
-                        [class.btn--ghost]="!proveedor.activo"
                         type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar proveedor"
+                        aria-label="Editar proveedor"
+                        (click)="editarProveedor(proveedor)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="icon-button"
+                        [class.icon-button--deactivate]="proveedor.activo"
+                        [class.icon-button--activate]="!proveedor.activo"
+                        [title]="proveedor.activo ? 'Desactivar proveedor' : 'Activar proveedor'"
+                        [attr.aria-label]="proveedor.activo ? 'Desactivar proveedor' : 'Activar proveedor'"
                         (click)="toggleEstadoProveedor(proveedor)"
                       >
-                        {{ proveedor.activo ? 'Desactivar' : 'Activar' }}
+                        <fa-icon [icon]="proveedor.activo ? faToggleOn : faToggleOff"></fa-icon>
                       </button>
                     </div>
                   </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="5" class="empty-cell">No hay proveedores registrados.</td>
+                  <td colspan="8" class="empty-cell">No hay proveedores registrados.</td>
                 </tr>
               }
             </tbody>
@@ -487,11 +512,15 @@
         <label class="field">
           <span class="field__label">Producto</span>
           <select formControlName="id_producto">
-            <option [value]="0">Todos</option>
-            @for (producto of productos(); track producto.id_producto) {
-              <option [value]="producto.id_producto">{{ producto.nombre }}</option>
+            @for (producto of productosDisponiblesDetalle(); track producto.id_producto) {
+              <option [value]="producto.id_producto">
+                {{ producto.nombre }} ({{ producto.codigo }})
+              </option>
             }
           </select>
+          <small class="field__hint">
+            Solo se muestran productos con al menos una unidad activa configurada.
+          </small>
         </label>
 
         <label class="field">
