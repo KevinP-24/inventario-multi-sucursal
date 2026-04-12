@@ -29,7 +29,11 @@
               }
             ],
             "styles": [
+              "sweetalert2/dist/sweetalert2.min.css",
               "src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "sweetalert2"
             ]
           },
           "configurations": {
@@ -86,7 +90,11 @@
               }
             ],
             "styles": [
+              "sweetalert2/dist/sweetalert2.min.css",
               "src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "sweetalert2"
             ]
           }
         }

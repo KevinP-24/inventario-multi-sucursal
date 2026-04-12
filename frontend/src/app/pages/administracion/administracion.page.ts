@@ -8,9 +8,11 @@ import {
   inject,
   signal
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { finalize, forkJoin } from 'rxjs';
+import { finalize, forkJoin, startWith } from 'rxjs';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { faPenToSquare, faToggleOff, faToggleOn } from '@fortawesome/free-solid-svg-icons';
 
 import { AdminApiService } from '../../core/services/admin/admin-api.service';
 import {
@@ -39,6 +41,7 @@ import {
 import { SucursalesApiService } from '../../core/services/sucursales/sucursales-api.service';
 import { TransferenciaDto } from '../../core/services/transferencias/dtos/transferencia.dto';
 import { TransferenciasApiService } from '../../core/services/transferencias/transferencias-api.service';
+import { UiAlertService } from '../../core/services/ui-alert.service';
 import { VentaDto } from '../../core/services/ventas/dtos/venta.dto';
 import { VentasApiService } from '../../core/services/ventas/ventas-api.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -63,10 +66,16 @@ interface SucursalGlobalVm {
   readonly transferencias: number;
 }
 
+interface GlobalFiltersVm {
+  readonly id_sucursal: number;
+  readonly fecha_desde: string;
+  readonly fecha_hasta: string;
+}
+
 @Component({
   selector: 'app-administracion-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PageHeaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, PageHeaderComponent, FontAwesomeModule],
   templateUrl: './administracion.page.html',
   styleUrl: './administracion.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -84,6 +93,7 @@ export class AdministracionPage {
   private readonly ventasApi = inject(VentasApiService);
   private readonly transferenciasApi = inject(TransferenciasApiService);
   private readonly reportesApi = inject(ReportesApiService);
+  private readonly uiAlerts = inject(UiAlertService);
 
   readonly currentUser = this.authSession.currentUser;
   readonly activeSection = signal<AdministracionSection>('usuarios');
@@ -94,6 +104,12 @@ export class AdministracionPage {
   readonly downloadingReport = signal<ReporteKind | null>(null);
   readonly errorMessage = signal('');
   readonly successMessage = signal('');
+  protected readonly faPenToSquare = faPenToSquare;
+  protected readonly faToggleOn = faToggleOn;
+  protected readonly faToggleOff = faToggleOff;
+
+  // Toggle visibilidad de contraseña
+  readonly showPassword = signal(false);
 
   readonly usuarios = signal<AuthUserDto[]>([]);
   readonly roles = signal<RoleDto[]>([]);
@@ -138,6 +154,18 @@ export class AdministracionPage {
     fecha_desde: [''],
     fecha_hasta: ['']
   });
+  readonly appliedGlobalFilters = signal<GlobalFiltersVm>({
+    id_sucursal: 0,
+    fecha_desde: '',
+    fecha_hasta: ''
+  });
+
+  private readonly selectedRoleId = toSignal(
+    this.usuarioForm.controls.id_rol.valueChanges.pipe(
+      startWith(this.usuarioForm.controls.id_rol.value)
+    ),
+    { initialValue: this.usuarioForm.controls.id_rol.value }
+  );
 
   readonly rolesActivos = computed(() => this.roles().filter((item) => item.activo !== false));
   readonly sucursalesActivas = computed(() =>
@@ -147,82 +175,52 @@ export class AdministracionPage {
   readonly parametrosActivos = computed(() => this.parametros().filter((item) => item.activo));
 
   readonly selectedRoleRequiresSucursal = computed(() => {
-    const idRol = Number(this.usuarioForm.controls.id_rol.value || 0);
-    const role = this.roles().find((item) => item.id_rol === idRol);
-    return role?.codigo !== UserRoleDto.ADMIN_GENERAL;
+    const idRol = Number(this.selectedRoleId() || 0);
+    const role = this.roles().find((item) => Number(item.id_rol) === idRol);
+    return this.roleRequiresSucursal(role);
   });
 
   readonly inventariosFiltrados = computed(() => {
-    const idSucursal = Number(this.globalFiltersForm.controls.id_sucursal.value || 0);
+    const { id_sucursal: idSucursal } = this.appliedGlobalFilters();
     return this.inventarios().filter((item) => !idSucursal || item.id_sucursal === idSucursal);
   });
 
   readonly ventasFiltradas = computed(() => {
-    const idSucursal = Number(this.globalFiltersForm.controls.id_sucursal.value || 0);
-    const fechaDesde = this.globalFiltersForm.controls.fecha_desde.value;
-    const fechaHasta = this.globalFiltersForm.controls.fecha_hasta.value;
+    const { id_sucursal: idSucursal, fecha_desde: fechaDesde, fecha_hasta: fechaHasta } =
+      this.appliedGlobalFilters();
 
     return this.ventas().filter((item) => {
-      if (idSucursal && item.id_sucursal !== idSucursal) {
-        return false;
-      }
-
-      if (fechaDesde && item.fecha && item.fecha.slice(0, 10) < fechaDesde) {
-        return false;
-      }
-
-      if (fechaHasta && item.fecha && item.fecha.slice(0, 10) > fechaHasta) {
-        return false;
-      }
-
+      if (idSucursal && item.id_sucursal !== idSucursal) return false;
+      if (fechaDesde && item.fecha && item.fecha.slice(0, 10) < fechaDesde) return false;
+      if (fechaHasta && item.fecha && item.fecha.slice(0, 10) > fechaHasta) return false;
       return true;
     });
   });
 
   readonly comprasFiltradas = computed(() => {
-    const idSucursal = Number(this.globalFiltersForm.controls.id_sucursal.value || 0);
-    const fechaDesde = this.globalFiltersForm.controls.fecha_desde.value;
-    const fechaHasta = this.globalFiltersForm.controls.fecha_hasta.value;
+    const { id_sucursal: idSucursal, fecha_desde: fechaDesde, fecha_hasta: fechaHasta } =
+      this.appliedGlobalFilters();
 
     return this.ordenesCompra().filter((item) => {
-      if (idSucursal && item.id_sucursal !== idSucursal) {
-        return false;
-      }
-
-      if (fechaDesde && item.fecha && item.fecha.slice(0, 10) < fechaDesde) {
-        return false;
-      }
-
-      if (fechaHasta && item.fecha && item.fecha.slice(0, 10) > fechaHasta) {
-        return false;
-      }
-
+      if (idSucursal && item.id_sucursal !== idSucursal) return false;
+      if (fechaDesde && item.fecha && item.fecha.slice(0, 10) < fechaDesde) return false;
+      if (fechaHasta && item.fecha && item.fecha.slice(0, 10) > fechaHasta) return false;
       return true;
     });
   });
 
   readonly transferenciasFiltradas = computed(() => {
-    const idSucursal = Number(this.globalFiltersForm.controls.id_sucursal.value || 0);
-    const fechaDesde = this.globalFiltersForm.controls.fecha_desde.value;
-    const fechaHasta = this.globalFiltersForm.controls.fecha_hasta.value;
+    const { id_sucursal: idSucursal, fecha_desde: fechaDesde, fecha_hasta: fechaHasta } =
+      this.appliedGlobalFilters();
 
     return this.transferencias().filter((item) => {
       if (
         idSucursal &&
         item.id_sucursal_origen !== idSucursal &&
         item.id_sucursal_destino !== idSucursal
-      ) {
-        return false;
-      }
-
-      if (fechaDesde && item.fecha_solicitud && item.fecha_solicitud.slice(0, 10) < fechaDesde) {
-        return false;
-      }
-
-      if (fechaHasta && item.fecha_solicitud && item.fecha_solicitud.slice(0, 10) > fechaHasta) {
-        return false;
-      }
-
+      ) return false;
+      if (fechaDesde && item.fecha_solicitud && item.fecha_solicitud.slice(0, 10) < fechaDesde) return false;
+      if (fechaHasta && item.fecha_solicitud && item.fecha_solicitud.slice(0, 10) > fechaHasta) return false;
       return true;
     });
   });
@@ -247,17 +245,16 @@ export class AdministracionPage {
   );
 
   readonly sucursalGlobalVm = computed<SucursalGlobalVm[]>(() => {
-    return this.sucursales().map((sucursal) => {
+    const { id_sucursal: idSucursal } = this.appliedGlobalFilters();
+    const sucursalesVisibles = this.sucursales().filter(
+      (sucursal) => !idSucursal || sucursal.id_sucursal === idSucursal
+    );
+
+    return sucursalesVisibles.map((sucursal) => {
       const usuarios = this.usuarios().filter((item) => item.id_sucursal === sucursal.id_sucursal);
-      const inventarios = this.inventariosFiltrados().filter(
-        (item) => item.id_sucursal === sucursal.id_sucursal
-      );
-      const ventas = this.ventasFiltradas().filter(
-        (item) => item.id_sucursal === sucursal.id_sucursal
-      );
-      const compras = this.comprasFiltradas().filter(
-        (item) => item.id_sucursal === sucursal.id_sucursal
-      );
+      const inventarios = this.inventariosFiltrados().filter((item) => item.id_sucursal === sucursal.id_sucursal);
+      const ventas = this.ventasFiltradas().filter((item) => item.id_sucursal === sucursal.id_sucursal);
+      const compras = this.comprasFiltradas().filter((item) => item.id_sucursal === sucursal.id_sucursal);
       const transferencias = this.transferenciasFiltradas().filter(
         (item) =>
           item.id_sucursal_origen === sucursal.id_sucursal ||
@@ -287,14 +284,36 @@ export class AdministracionPage {
   });
 
   constructor() {
+    this.syncUsuarioSucursalControl();
     this.cargarVista();
   }
+
+  // ===== TOGGLE CONTRASEÑA =====
+
+  togglePassword(): void {
+    this.showPassword.update((v) => !v);
+  }
+
+  // ===== SECCIÓN =====
 
   seleccionarSeccion(section: AdministracionSection): void {
     this.activeSection.set(section);
     this.errorMessage.set('');
     this.successMessage.set('');
+    // Ocultar contraseña al cambiar de sección
+    this.showPassword.set(false);
   }
+
+  aplicarFiltrosGlobales(): void {
+    const value = this.globalFiltersForm.getRawValue();
+    this.appliedGlobalFilters.set({
+      id_sucursal: Number(value.id_sucursal || 0),
+      fecha_desde: value.fecha_desde || '',
+      fecha_hasta: value.fecha_hasta || ''
+    });
+  }
+
+  // ===== CARGA GLOBAL =====
 
   cargarVista(): void {
     this.loading.set(true);
@@ -346,6 +365,8 @@ export class AdministracionPage {
       });
   }
 
+  // ===== USUARIOS =====
+
   guardarUsuario(): void {
     if (this.usuarioForm.invalid) {
       this.usuarioForm.markAllAsTouched();
@@ -365,12 +386,14 @@ export class AdministracionPage {
     };
 
     if (!payload.id_sucursal && this.selectedRoleRequiresSucursal()) {
-      this.errorMessage.set('Selecciona la sucursal asociada al usuario.');
+      this.errorMessage.set('');
+      void this.uiAlerts.warning('Selecciona la sucursal asociada al usuario.');
       return;
     }
 
     if (!this.selectedUsuarioId() && !payload.password) {
-      this.errorMessage.set('Define una contrasena para crear el usuario.');
+      this.errorMessage.set('');
+      void this.uiAlerts.warning('Define una contrasena para crear el usuario.');
       return;
     }
 
@@ -389,7 +412,8 @@ export class AdministracionPage {
       )
       .subscribe({
         next: () => {
-          this.successMessage.set(
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
             this.selectedUsuarioId()
               ? 'Usuario actualizado correctamente.'
               : 'Usuario creado correctamente.'
@@ -398,7 +422,9 @@ export class AdministracionPage {
           this.cargarVista();
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(this.resolveApiError(error, 'No se pudo guardar el usuario.'));
+          const message = this.resolveApiError(error, 'No se pudo guardar el usuario.');
+          this.errorMessage.set('');
+          void this.uiAlerts.error(message);
         }
       });
   }
@@ -406,6 +432,7 @@ export class AdministracionPage {
   editarUsuario(usuario: AuthUserDto): void {
     this.activeSection.set('usuarios');
     this.selectedUsuarioId.set(usuario.id_usuario);
+    this.showPassword.set(false);
     this.usuarioForm.setValue({
       nombre: usuario.nombre,
       correo: usuario.correo,
@@ -416,7 +443,18 @@ export class AdministracionPage {
     });
   }
 
-  toggleEstadoUsuario(usuario: AuthUserDto): void {
+  async toggleEstadoUsuario(usuario: AuthUserDto): Promise<void> {
+    const confirmed = await this.uiAlerts.confirm({
+      title: usuario.activo ? 'Desactivar usuario' : 'Activar usuario',
+      text: `Se actualizara el estado de ${usuario.nombre}.`,
+      icon: 'warning',
+      confirmButtonText: usuario.activo ? 'Si, desactivar' : 'Si, activar'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     const payload: SaveUserDto = {
       nombre: usuario.nombre,
       correo: usuario.correo,
@@ -430,7 +468,8 @@ export class AdministracionPage {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.successMessage.set(
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
             payload.activo ? 'Usuario activado correctamente.' : 'Usuario desactivado correctamente.'
           );
           if (this.selectedUsuarioId() === usuario.id_usuario) {
@@ -439,10 +478,27 @@ export class AdministracionPage {
           this.cargarVista();
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(this.resolveApiError(error, 'No se pudo actualizar el usuario.'));
+          const message = this.resolveApiError(error, 'No se pudo actualizar el usuario.');
+          this.errorMessage.set('');
+          void this.uiAlerts.error(message);
         }
       });
   }
+
+  resetUsuarioForm(): void {
+    this.selectedUsuarioId.set(null);
+    this.showPassword.set(false);
+    this.usuarioForm.reset({
+      nombre: '',
+      correo: '',
+      password: '',
+      id_rol: this.rolesActivos()[0]?.id_rol ?? 0,
+      id_sucursal: 0,
+      activo: true
+    });
+  }
+
+  // ===== SUCURSALES =====
 
   guardarSucursal(): void {
     if (this.sucursalForm.invalid) {
@@ -474,7 +530,8 @@ export class AdministracionPage {
       )
       .subscribe({
         next: () => {
-          this.successMessage.set(
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
             this.selectedSucursalId()
               ? 'Sucursal actualizada correctamente.'
               : 'Sucursal creada correctamente.'
@@ -483,7 +540,9 @@ export class AdministracionPage {
           this.cargarVista();
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(this.resolveApiError(error, 'No se pudo guardar la sucursal.'));
+          const message = this.resolveApiError(error, 'No se pudo guardar la sucursal.');
+          this.errorMessage.set('');
+          void this.uiAlerts.error(message);
         }
       });
   }
@@ -500,8 +559,19 @@ export class AdministracionPage {
     });
   }
 
-  toggleEstadoSucursal(sucursal: SucursalDto): void {
+  async toggleEstadoSucursal(sucursal: SucursalDto): Promise<void> {
     const nextEstado = sucursal.estado?.toLowerCase?.() === 'inactiva' ? 'activa' : 'inactiva';
+    const confirmed = await this.uiAlerts.confirm({
+      title: nextEstado === 'activa' ? 'Activar sucursal' : 'Desactivar sucursal',
+      text: `Se actualizara el estado de ${sucursal.nombre}.`,
+      icon: 'warning',
+      confirmButtonText: nextEstado === 'activa' ? 'Si, activar' : 'Si, desactivar'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     const payload: GuardarSucursalDto = {
       nombre: sucursal.nombre,
       direccion: sucursal.direccion,
@@ -515,7 +585,8 @@ export class AdministracionPage {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.successMessage.set(
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
             nextEstado === 'activa'
               ? 'Sucursal activada correctamente.'
               : 'Sucursal desactivada correctamente.'
@@ -526,10 +597,25 @@ export class AdministracionPage {
           this.cargarVista();
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(this.resolveApiError(error, 'No se pudo actualizar la sucursal.'));
+          const message = this.resolveApiError(error, 'No se pudo actualizar la sucursal.');
+          this.errorMessage.set('');
+          void this.uiAlerts.error(message);
         }
       });
   }
+
+  resetSucursalForm(): void {
+    this.selectedSucursalId.set(null);
+    this.sucursalForm.reset({
+      nombre: '',
+      direccion: '',
+      ciudad: '',
+      telefono: '',
+      estado: 'activa'
+    });
+  }
+
+  // ===== PARAMETROS =====
 
   guardarParametro(): void {
     if (this.parametroForm.invalid) {
@@ -560,7 +646,8 @@ export class AdministracionPage {
       )
       .subscribe({
         next: () => {
-          this.successMessage.set(
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
             this.selectedParametroId()
               ? 'Parametro actualizado correctamente.'
               : 'Parametro creado correctamente.'
@@ -569,7 +656,9 @@ export class AdministracionPage {
           this.cargarVista();
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(this.resolveApiError(error, 'No se pudo guardar el parametro.'));
+          const message = this.resolveApiError(error, 'No se pudo guardar el parametro.');
+          this.errorMessage.set('');
+          void this.uiAlerts.error(message);
         }
       });
   }
@@ -585,7 +674,18 @@ export class AdministracionPage {
     });
   }
 
-  toggleEstadoParametro(parametro: ParametroSistemaDto): void {
+  async toggleEstadoParametro(parametro: ParametroSistemaDto): Promise<void> {
+    const confirmed = await this.uiAlerts.confirm({
+      title: parametro.activo ? 'Desactivar parametro' : 'Activar parametro',
+      text: `Se actualizara el estado de ${parametro.clave}.`,
+      icon: 'warning',
+      confirmButtonText: parametro.activo ? 'Si, desactivar' : 'Si, activar'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     const payload: GuardarParametroSistemaDto = {
       clave: parametro.clave,
       valor: parametro.valor,
@@ -598,7 +698,8 @@ export class AdministracionPage {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.successMessage.set(
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
             payload.activo
               ? 'Parametro activado correctamente.'
               : 'Parametro desactivado correctamente.'
@@ -609,10 +710,24 @@ export class AdministracionPage {
           this.cargarVista();
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(this.resolveApiError(error, 'No se pudo actualizar el parametro.'));
+          const message = this.resolveApiError(error, 'No se pudo actualizar el parametro.');
+          this.errorMessage.set('');
+          void this.uiAlerts.error(message);
         }
       });
   }
+
+  resetParametroForm(): void {
+    this.selectedParametroId.set(null);
+    this.parametroForm.reset({
+      clave: '',
+      valor: '',
+      descripcion: '',
+      activo: true
+    });
+  }
+
+  // ===== REPORTES =====
 
   descargarReporte(kind: ReporteKind): void {
     const filtros = this.buildReporteFiltros();
@@ -636,60 +751,26 @@ export class AdministracionPage {
         next: (blob) => {
           const nombre = `reporte-${kind}-${new Date().toISOString().slice(0, 10)}.pdf`;
           this.downloadBlob(blob, nombre);
-          this.successMessage.set('Reporte generado correctamente.');
+          this.successMessage.set('');
+          void this.uiAlerts.successToast('Reporte generado correctamente.');
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(this.resolveApiError(error, 'No se pudo generar el reporte.'));
+          const message = this.resolveApiError(error, 'No se pudo generar el reporte.');
+          this.errorMessage.set('');
+          void this.uiAlerts.error(message);
         }
       });
   }
 
-  resetUsuarioForm(): void {
-    this.selectedUsuarioId.set(null);
-    this.usuarioForm.reset({
-      nombre: '',
-      correo: '',
-      password: '',
-      id_rol: this.rolesActivos()[0]?.id_rol ?? 0,
-      id_sucursal: 0,
-      activo: true
-    });
-  }
-
-  resetSucursalForm(): void {
-    this.selectedSucursalId.set(null);
-    this.sucursalForm.reset({
-      nombre: '',
-      direccion: '',
-      ciudad: '',
-      telefono: '',
-      estado: 'activa'
-    });
-  }
-
-  resetParametroForm(): void {
-    this.selectedParametroId.set(null);
-    this.parametroForm.reset({
-      clave: '',
-      valor: '',
-      descripcion: '',
-      activo: true
-    });
-  }
+  // ===== HELPERS =====
 
   protected getRolNombre(idRol: number | null | undefined): string {
-    if (!idRol) {
-      return 'Sin rol';
-    }
-
+    if (!idRol) return 'Sin rol';
     return this.roles().find((item) => item.id_rol === idRol)?.nombre ?? `Rol #${idRol}`;
   }
 
   protected getSucursalNombre(idSucursal: number | null | undefined): string {
-    if (!idSucursal) {
-      return 'Sin sucursal';
-    }
-
+    if (!idSucursal) return 'Sin sucursal';
     return (
       this.sucursales().find((item) => item.id_sucursal === idSucursal)?.nombre ??
       `Sucursal #${idSucursal}`
@@ -697,18 +778,11 @@ export class AdministracionPage {
   }
 
   protected getProductoNombre(idProducto: number | null | undefined): string {
-    if (!idProducto) {
-      return 'Sin producto';
-    }
-
+    if (!idProducto) return 'Sin producto';
     return (
       this.productos().find((item) => item.id_producto === idProducto)?.nombre ??
       `Producto #${idProducto}`
     );
-  }
-
-  protected getEstadoSucursalClass(estado: string | null | undefined): string {
-    return estado?.toLowerCase?.() === 'inactiva' ? 'is-inactive' : 'is-active';
   }
 
   protected getStateLabel(value: boolean): string {
@@ -719,6 +793,46 @@ export class AdministracionPage {
     if (!this.usuarioForm.controls.id_rol.value && this.rolesActivos().length) {
       this.usuarioForm.controls.id_rol.setValue(this.rolesActivos()[0].id_rol);
     }
+
+    this.applySucursalStateByRole();
+    this.aplicarFiltrosGlobales();
+  }
+
+  private syncUsuarioSucursalControl(): void {
+    this.usuarioForm.controls.id_rol.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.applySucursalStateByRole();
+      });
+  }
+
+  private applySucursalStateByRole(): void {
+    const control = this.usuarioForm.controls.id_sucursal;
+
+    if (this.selectedRoleRequiresSucursal()) {
+      if (control.disabled) {
+        control.enable({ emitEvent: false });
+      }
+      return;
+    }
+
+    control.setValue(0, { emitEvent: false });
+    if (control.enabled) {
+      control.disable({ emitEvent: false });
+    }
+  }
+
+  private roleRequiresSucursal(role?: RoleDto | null): boolean {
+    if (!role) {
+      return true;
+    }
+
+    if (role.codigo) {
+      return role.codigo !== UserRoleDto.ADMIN_GENERAL;
+    }
+
+    const roleName = role.nombre?.trim().toLowerCase();
+    return roleName !== 'admin general' && roleName !== 'administrador general';
   }
 
   private buildReporteFiltros(): ReporteFiltrosDto {
@@ -743,16 +857,12 @@ export class AdministracionPage {
     if (response && typeof response === 'object' && 'data' in response) {
       return response.data;
     }
-
     return response as T;
   }
 
   private resolveApiError(error: HttpErrorResponse, fallback: string): string {
     const apiError = error.error as
-      | {
-          message?: string;
-          errors?: Record<string, string | readonly string[]>;
-        }
+      | { message?: string; errors?: Record<string, string | readonly string[]> }
       | null;
 
     const detailErrors = apiError?.errors

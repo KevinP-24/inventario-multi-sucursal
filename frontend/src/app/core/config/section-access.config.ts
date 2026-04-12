@@ -28,21 +28,21 @@ export const SECTION_ACCESS_CONFIG: readonly SectionAccessConfig[] = [
     path: '/app/inventario',
     icon: 'inventario',
     description: 'Consulta existencias, alertas y movimientos operativos.',
-    roles: [UserRoleDto.ADMIN_SUCURSAL, UserRoleDto.OPERARIO_INVENTARIO]
+    roles: [UserRoleDto.ADMIN_GENERAL, UserRoleDto.ADMIN_SUCURSAL, UserRoleDto.OPERARIO_INVENTARIO]
   },
   {
     label: 'Compras',
     path: '/app/compras',
     icon: 'compras',
     description: 'Ordenes, proveedores y abastecimiento',
-    roles: [UserRoleDto.ADMIN_GENERAL, UserRoleDto.ADMIN_SUCURSAL]
+    roles: [UserRoleDto.ADMIN_SUCURSAL]
   },
   {
     label: 'Ventas',
     path: '/app/ventas',
     icon: 'ventas',
     description: 'Clientes, comprobantes y facturacion',
-    roles: [UserRoleDto.ADMIN_GENERAL, UserRoleDto.ADMIN_SUCURSAL, UserRoleDto.OPERARIO_INVENTARIO]
+    roles: [UserRoleDto.OPERARIO_INVENTARIO]
   },
   {
     label: 'Transferencias',
@@ -56,7 +56,7 @@ export const SECTION_ACCESS_CONFIG: readonly SectionAccessConfig[] = [
     path: '/app/logistica',
     icon: 'logistica',
     description: 'Rutas, envios y cumplimiento logistico',
-    roles: [UserRoleDto.ADMIN_GENERAL, UserRoleDto.ADMIN_SUCURSAL, UserRoleDto.OPERARIO_INVENTARIO]
+    roles: [UserRoleDto.ADMIN_GENERAL, UserRoleDto.ADMIN_SUCURSAL]
   },
   {
     label: 'Administracion',

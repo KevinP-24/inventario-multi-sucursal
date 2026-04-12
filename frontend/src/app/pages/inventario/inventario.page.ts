@@ -14,6 +14,7 @@ import { finalize, forkJoin } from 'rxjs';
 
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { InventarioApiService } from '../../core/services/inventario/inventario-api.service';
+import { UiAlertService } from '../../core/services/ui-alert.service';
 import {
   AjustarInventarioDto,
   InventarioSucursalDto,
@@ -70,6 +71,7 @@ export class InventarioPage implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly inventarioApi = inject(InventarioApiService);
+  private readonly uiAlerts = inject(UiAlertService);
 
   readonly activeSection = signal<InventarioSection>('operacion');
   readonly loading = signal(false);
@@ -523,11 +525,17 @@ export class InventarioPage implements OnInit {
       });
   }
 
-  toggleEstadoProducto(producto: ProductoDto): void {
+  async toggleEstadoProducto(producto: ProductoDto): Promise<void> {
     const nextActivo = !producto.activo;
-    const actionLabel = nextActivo ? 'activar' : 'desactivar';
 
-    if (!confirm(`Deseas ${actionLabel} el producto "${producto.nombre}"?`)) {
+    const confirmed = await this.uiAlerts.confirm({
+      title: `${nextActivo ? 'Activar' : 'Desactivar'} producto`,
+      text: `Se actualizara el estado de "${producto.nombre}".`,
+      icon: 'warning',
+      confirmButtonText: nextActivo ? 'Si, activar' : 'Si, desactivar'
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -633,11 +641,17 @@ export class InventarioPage implements OnInit {
       });
   }
 
-  eliminarProductoUnidad(item: ProductoUnidadVm): void {
+  async eliminarProductoUnidad(item: ProductoUnidadVm): Promise<void> {
     const nextActivo = !item.activo;
-    const actionLabel = nextActivo ? 'activar' : 'desactivar';
 
-    if (!confirm(`Deseas ${actionLabel} la unidad "${item.unidad}" de "${item.producto}"?`)) {
+    const confirmed = await this.uiAlerts.confirm({
+      title: `${nextActivo ? 'Activar' : 'Desactivar'} unidad`,
+      text: `Se actualizara la unidad "${item.unidad}" del producto "${item.producto}".`,
+      icon: 'warning',
+      confirmButtonText: nextActivo ? 'Si, activar' : 'Si, desactivar'
+    });
+
+    if (!confirmed) {
       return;
     }
 

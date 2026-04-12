@@ -53,15 +53,21 @@
       <p>Cargando modulo administrativo...</p>
     </article>
   } @else {
+
+    <!-- ===== USUARIOS ===== -->
     @if (activeSection() === 'usuarios') {
       <div class="content-grid content-grid--split">
         <article class="panel">
           <div class="panel__header">
             <div>
               <p class="panel__eyebrow">RF43</p>
-              <h2>Gestion de usuarios</h2>
+              <h2>{{ selectedUsuarioId() ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
             </div>
-            <button type="button" class="ghost-button" (click)="resetUsuarioForm()">Nuevo usuario</button>
+            @if (selectedUsuarioId()) {
+              <button type="button" class="ghost-button" (click)="resetUsuarioForm()">
+                Cancelar
+              </button>
+            }
           </div>
 
           <form class="form-grid" [formGroup]="usuarioForm" (ngSubmit)="guardarUsuario()">
@@ -87,7 +93,7 @@
 
             <label class="field">
               <span>Sucursal</span>
-              <select formControlName="id_sucursal" [disabled]="!selectedRoleRequiresSucursal()">
+              <select formControlName="id_sucursal" [attr.disabled]="!selectedRoleRequiresSucursal() || null">
                 <option [value]="0">
                   {{ selectedRoleRequiresSucursal() ? 'Selecciona sucursal' : 'No aplica' }}
                 </option>
@@ -97,16 +103,39 @@
               </select>
             </label>
 
-            <label class="field">
+            <!-- CAMPO CONTRASEÑA CON TOGGLE -->
+            <label class="field field--password">
               <span>{{ selectedUsuarioId() ? 'Nueva contrasena' : 'Contrasena' }}</span>
               <input
-                type="password"
+                [type]="showPassword() ? 'text' : 'password'"
                 formControlName="password"
                 [placeholder]="selectedUsuarioId() ? 'Opcional para actualizar' : 'Obligatoria al crear'"
+                autocomplete="new-password"
               />
+              <button
+                type="button"
+                class="password-toggle"
+                (click)="togglePassword()"
+                [attr.aria-label]="showPassword() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+              >
+                @if (showPassword()) {
+                  <!-- ojo tachado: ocultar -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                } @else {
+                  <!-- ojo abierto: mostrar -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                }
+              </button>
             </label>
 
-            <label class="field field--toggle">
+            <label class="field">
               <span>Estado</span>
               <select formControlName="activo">
                 <option [ngValue]="true">Activo</option>
@@ -116,9 +145,11 @@
 
             <div class="form-actions">
               <button type="submit" class="primary-button" [disabled]="submittingUsuario()">
-                {{ selectedUsuarioId() ? 'Guardar cambios' : 'Crear usuario' }}
+                {{ submittingUsuario() ? 'Guardando...' : (selectedUsuarioId() ? 'Guardar cambios' : 'Crear usuario') }}
               </button>
-              <button type="button" class="ghost-button" (click)="resetUsuarioForm()">Limpiar</button>
+              <button type="button" class="ghost-button" (click)="resetUsuarioForm()">
+                Limpiar
+              </button>
             </div>
           </form>
         </article>
@@ -157,12 +188,29 @@
                       </span>
                     </td>
                     <td class="actions-cell">
-                      <button type="button" class="ghost-button" (click)="editarUsuario(usuario)">
-                        Editar
-                      </button>
-                      <button type="button" class="ghost-button" (click)="toggleEstadoUsuario(usuario)">
-                        {{ usuario.activo ? 'Desactivar' : 'Activar' }}
-                      </button>
+                      <div class="actions-group">
+                        <button
+                          type="button"
+                          class="icon-button icon-button--edit"
+                          title="Editar usuario"
+                          aria-label="Editar usuario"
+                          (click)="editarUsuario(usuario)"
+                        >
+                          <fa-icon [icon]="faPenToSquare"></fa-icon>
+                        </button>
+
+                        <button
+                          type="button"
+                          class="icon-button"
+                          [class.icon-button--deactivate]="usuario.activo"
+                          [class.icon-button--activate]="!usuario.activo"
+                          [title]="usuario.activo ? 'Desactivar usuario' : 'Activar usuario'"
+                          [attr.aria-label]="usuario.activo ? 'Desactivar usuario' : 'Activar usuario'"
+                          (click)="toggleEstadoUsuario(usuario)"
+                        >
+                          <fa-icon [icon]="usuario.activo ? faToggleOn : faToggleOff"></fa-icon>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 } @empty {
@@ -177,15 +225,20 @@
       </div>
     }
 
+    <!-- ===== SUCURSALES ===== -->
     @if (activeSection() === 'sucursales') {
       <div class="content-grid content-grid--split">
         <article class="panel">
           <div class="panel__header">
             <div>
               <p class="panel__eyebrow">RF44</p>
-              <h2>Gestion de sucursales</h2>
+              <h2>{{ selectedSucursalId() ? 'Editar sucursal' : 'Nueva sucursal' }}</h2>
             </div>
-            <button type="button" class="ghost-button" (click)="resetSucursalForm()">Nueva sucursal</button>
+            @if (selectedSucursalId()) {
+              <button type="button" class="ghost-button" (click)="resetSucursalForm()">
+                Cancelar
+              </button>
+            }
           </div>
 
           <form class="form-grid" [formGroup]="sucursalForm" (ngSubmit)="guardarSucursal()">
@@ -219,9 +272,11 @@
 
             <div class="form-actions">
               <button type="submit" class="primary-button" [disabled]="submittingSucursal()">
-                {{ selectedSucursalId() ? 'Guardar cambios' : 'Crear sucursal' }}
+                {{ submittingSucursal() ? 'Guardando...' : (selectedSucursalId() ? 'Guardar cambios' : 'Crear sucursal') }}
               </button>
-              <button type="button" class="ghost-button" (click)="resetSucursalForm()">Limpiar</button>
+              <button type="button" class="ghost-button" (click)="resetSucursalForm()">
+                Limpiar
+              </button>
             </div>
           </form>
         </article>
@@ -260,12 +315,29 @@
                       </span>
                     </td>
                     <td class="actions-cell">
-                      <button type="button" class="ghost-button" (click)="editarSucursal(sucursal)">
-                        Editar
-                      </button>
-                      <button type="button" class="ghost-button" (click)="toggleEstadoSucursal(sucursal)">
-                        {{ sucursal.estado.toLowerCase() === 'inactiva' ? 'Activar' : 'Desactivar' }}
-                      </button>
+                      <div class="actions-group">
+                        <button
+                          type="button"
+                          class="icon-button icon-button--edit"
+                          title="Editar sucursal"
+                          aria-label="Editar sucursal"
+                          (click)="editarSucursal(sucursal)"
+                        >
+                          <fa-icon [icon]="faPenToSquare"></fa-icon>
+                        </button>
+
+                        <button
+                          type="button"
+                          class="icon-button"
+                          [class.icon-button--deactivate]="sucursal.estado.toLowerCase() !== 'inactiva'"
+                          [class.icon-button--activate]="sucursal.estado.toLowerCase() === 'inactiva'"
+                          [title]="sucursal.estado.toLowerCase() === 'inactiva' ? 'Activar sucursal' : 'Desactivar sucursal'"
+                          [attr.aria-label]="sucursal.estado.toLowerCase() === 'inactiva' ? 'Activar sucursal' : 'Desactivar sucursal'"
+                          (click)="toggleEstadoSucursal(sucursal)"
+                        >
+                          <fa-icon [icon]="sucursal.estado.toLowerCase() === 'inactiva' ? faToggleOff : faToggleOn"></fa-icon>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 } @empty {
@@ -280,15 +352,20 @@
       </div>
     }
 
+    <!-- ===== PARAMETROS ===== -->
     @if (activeSection() === 'parametros') {
       <div class="content-grid content-grid--split">
         <article class="panel">
           <div class="panel__header">
             <div>
               <p class="panel__eyebrow">RF45</p>
-              <h2>Parametros del sistema</h2>
+              <h2>{{ selectedParametroId() ? 'Editar parametro' : 'Nuevo parametro' }}</h2>
             </div>
-            <button type="button" class="ghost-button" (click)="resetParametroForm()">Nuevo parametro</button>
+            @if (selectedParametroId()) {
+              <button type="button" class="ghost-button" (click)="resetParametroForm()">
+                Cancelar
+              </button>
+            }
           </div>
 
           <form class="form-grid" [formGroup]="parametroForm" (ngSubmit)="guardarParametro()">
@@ -311,7 +388,7 @@
               ></textarea>
             </label>
 
-            <label class="field field--toggle">
+            <label class="field">
               <span>Estado</span>
               <select formControlName="activo">
                 <option [ngValue]="true">Activo</option>
@@ -321,9 +398,11 @@
 
             <div class="form-actions">
               <button type="submit" class="primary-button" [disabled]="submittingParametro()">
-                {{ selectedParametroId() ? 'Guardar cambios' : 'Crear parametro' }}
+                {{ submittingParametro() ? 'Guardando...' : (selectedParametroId() ? 'Guardar cambios' : 'Crear parametro') }}
               </button>
-              <button type="button" class="ghost-button" (click)="resetParametroForm()">Limpiar</button>
+              <button type="button" class="ghost-button" (click)="resetParametroForm()">
+                Limpiar
+              </button>
             </div>
           </form>
         </article>
@@ -360,12 +439,29 @@
                       </span>
                     </td>
                     <td class="actions-cell">
-                      <button type="button" class="ghost-button" (click)="editarParametro(parametro)">
-                        Editar
-                      </button>
-                      <button type="button" class="ghost-button" (click)="toggleEstadoParametro(parametro)">
-                        {{ parametro.activo ? 'Desactivar' : 'Activar' }}
-                      </button>
+                      <div class="actions-group">
+                        <button
+                          type="button"
+                          class="icon-button icon-button--edit"
+                          title="Editar parametro"
+                          aria-label="Editar parametro"
+                          (click)="editarParametro(parametro)"
+                        >
+                          <fa-icon [icon]="faPenToSquare"></fa-icon>
+                        </button>
+
+                        <button
+                          type="button"
+                          class="icon-button"
+                          [class.icon-button--deactivate]="parametro.activo"
+                          [class.icon-button--activate]="!parametro.activo"
+                          [title]="parametro.activo ? 'Desactivar parametro' : 'Activar parametro'"
+                          [attr.aria-label]="parametro.activo ? 'Desactivar parametro' : 'Activar parametro'"
+                          (click)="toggleEstadoParametro(parametro)"
+                        >
+                          <fa-icon [icon]="parametro.activo ? faToggleOn : faToggleOff"></fa-icon>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 } @empty {
@@ -380,6 +476,7 @@
       </div>
     }
 
+    <!-- ===== GLOBAL ===== -->
     @if (activeSection() === 'global') {
       <div class="content-grid">
         <article class="panel">
@@ -410,6 +507,12 @@
               <span>Fecha hasta</span>
               <input type="date" formControlName="fecha_hasta" />
             </label>
+
+            <div class="filters-actions">
+              <button type="button" class="primary-button" (click)="aplicarFiltrosGlobales()">
+                Aplicar filtros
+              </button>
+            </div>
           </form>
 
           <div class="summary-grid">
@@ -446,8 +549,7 @@
           </div>
         </article>
 
-        <div class="content-grid content-grid--split">
-          <article class="panel">
+        <article class="panel panel--wide">
             <div class="panel__header">
               <div>
                 <p class="panel__eyebrow">Comparativo</p>
@@ -455,7 +557,7 @@
               </div>
             </div>
 
-            <div class="table-wrapper">
+            <div class="table-wrapper table-wrapper--wide">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -505,8 +607,7 @@
                 </tbody>
               </table>
             </div>
-          </article>
-        </div>
+        </article>
       </div>
     }
   }

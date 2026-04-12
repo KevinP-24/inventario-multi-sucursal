@@ -32,6 +32,7 @@ import { ProductoDto } from '../../core/services/inventario/dtos/producto.dto';
 import { ProductoUnidadDto } from '../../core/services/inventario/dtos/producto-unidad.dto';
 import { SucursalDto } from '../../core/services/sucursales/dtos/sucursal.dto';
 import { SucursalesApiService } from '../../core/services/sucursales/sucursales-api.service';
+import { UiAlertService } from '../../core/services/ui-alert.service';
 import { TipoDocumentoDto } from '../../core/services/ventas/dtos/tipo-documento.dto';
 import { TiposDocumentoApiService } from '../../core/services/ventas/tipos-documento-api.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
@@ -67,6 +68,7 @@ export class ComprasPage implements OnInit {
   private readonly inventarioApi = inject(InventarioApiService);
   private readonly sucursalesApi = inject(SucursalesApiService);
   private readonly tiposDocumentoApi = inject(TiposDocumentoApiService);
+  private readonly uiAlerts = inject(UiAlertService);
 
   readonly activeSection = signal<ComprasSection>('ordenes');
   readonly loading = signal(false);
@@ -486,11 +488,17 @@ export class ComprasPage implements OnInit {
       });
   }
 
-  toggleEstadoProveedor(proveedor: ProveedorDto): void {
+  async toggleEstadoProveedor(proveedor: ProveedorDto): Promise<void> {
     const nextActivo = !proveedor.activo;
-    const actionLabel = nextActivo ? 'activar' : 'desactivar';
 
-    if (!confirm(`Deseas ${actionLabel} el proveedor "${proveedor.nombre}"?`)) {
+    const confirmed = await this.uiAlerts.confirm({
+      title: `${nextActivo ? 'Activar' : 'Desactivar'} proveedor`,
+      text: `Se actualizara el estado de "${proveedor.nombre}".`,
+      icon: 'warning',
+      confirmButtonText: nextActivo ? 'Si, activar' : 'Si, desactivar'
+    });
+
+    if (!confirmed) {
       return;
     }
 
