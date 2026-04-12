@@ -64,8 +64,8 @@
           <span class="field__label">Sucursal</span>
           <select formControlName="id_sucursal">
             <option [value]="0">Todas</option>
-            @for (idSucursal of sucursalesDisponibles(); track idSucursal) {
-              <option [value]="idSucursal">Sucursal {{ idSucursal }}</option>
+            @for (sucursal of sucursalesDisponibles(); track sucursal.id_sucursal) {
+              <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
             }
           </select>
         </label>
@@ -180,7 +180,11 @@
             <form class="adjust-form" [formGroup]="movimientoForm" (ngSubmit)="registrarMovimiento()">
               <label class="field">
                 <span class="field__label">Usuario responsable</span>
-                <input type="number" formControlName="id_usuario" />
+                <input
+                  type="text"
+                  [value]="usuarioResponsableLabel()"
+                  readonly
+                />
               </label>
 
               <label class="field">
@@ -376,19 +380,28 @@
                       {{ producto.activo ? 'Activo' : 'Inactivo' }}
                     </span>
                   </td>
-                  <td>
-                    <div class="action-row">
-                      <button class="btn btn--ghost" type="button" (click)="editarProducto(producto)">
-                        Editar
-                      </button>
+                  <td class="actions-cell">
+                    <div class="actions-group">
                       <button
-                        class="btn"
-                        [class.btn--danger]="producto.activo"
-                        [class.btn--ghost]="!producto.activo"
                         type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar producto"
+                        aria-label="Editar producto"
+                        (click)="editarProducto(producto)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="icon-button"
+                        [class.icon-button--deactivate]="producto.activo"
+                        [class.icon-button--activate]="!producto.activo"
+                        [title]="producto.activo ? 'Desactivar producto' : 'Activar producto'"
+                        [attr.aria-label]="producto.activo ? 'Desactivar producto' : 'Activar producto'"
                         (click)="toggleEstadoProducto(producto)"
                       >
-                        {{ producto.activo ? 'Desactivar' : 'Activar' }}
+                        <fa-icon [icon]="producto.activo ? faToggleOn : faToggleOff"></fa-icon>
                       </button>
                     </div>
                   </td>
@@ -431,6 +444,26 @@
             <span class="field__label">Stock minimo</span>
             <input type="number" min="0" step="0.01" formControlName="stock_minimo" />
           </label>
+
+          @if (!selectedProductoId()) {
+            <label class="field">
+              <span class="field__label">Unidad base inicial</span>
+              <select formControlName="id_unidad_base">
+                <option [value]="0">Selecciona una unidad</option>
+                @for (unidad of unidadesMedida(); track unidad.id_unidad) {
+                  <option [value]="unidad.id_unidad">
+                    {{ unidad.nombre }} ({{ unidad.simbolo }})
+                  </option>
+                }
+              </select>
+            </label>
+          }
+
+          @if (selectedProductoId()) {
+            <p class="panel__meta">
+              La unidad base y las conversiones se gestionan desde la pestaña Unidades.
+            </p>
+          }
 
           <div class="form-actions">
             <button class="btn btn--primary" type="submit" [disabled]="submittingProducto()">
@@ -489,19 +522,28 @@
                       {{ item.activo ? 'Activo' : 'Inactivo' }}
                     </span>
                   </td>
-                  <td>
-                    <div class="action-row">
-                      <button class="btn btn--ghost" type="button" (click)="editarProductoUnidad(item)">
-                        Editar
-                      </button>
+                  <td class="actions-cell">
+                    <div class="actions-group">
                       <button
-                        class="btn"
-                        [class.btn--danger]="item.activo"
-                        [class.btn--ghost]="!item.activo"
                         type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar unidad"
+                        aria-label="Editar unidad"
+                        (click)="editarProductoUnidad(item)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="icon-button"
+                        [class.icon-button--deactivate]="item.activo"
+                        [class.icon-button--activate]="!item.activo"
+                        [title]="item.activo ? 'Desactivar unidad' : 'Activar unidad'"
+                        [attr.aria-label]="item.activo ? 'Desactivar unidad' : 'Activar unidad'"
                         (click)="eliminarProductoUnidad(item)"
                       >
-                        {{ item.activo ? 'Desactivar' : 'Activar' }}
+                        <fa-icon [icon]="item.activo ? faToggleOn : faToggleOff"></fa-icon>
                       </button>
                     </div>
                   </td>
@@ -528,9 +570,9 @@
           <label class="field">
             <span class="field__label">Producto</span>
             <select formControlName="id_producto">
-              @for (producto of productosActivos(); track producto.id_producto) {
+              @for (producto of productosParaUnidades(); track producto.id_producto) {
                 <option [value]="producto.id_producto">
-                  {{ producto.nombre }} ({{ producto.codigo }})
+                  {{ producto.nombre }} ({{ producto.codigo }}){{ producto.activo ? '' : ' - Inactivo' }}
                 </option>
               }
             </select>

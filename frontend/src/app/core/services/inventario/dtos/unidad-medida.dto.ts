@@ -8,4 +8,5 @@ export interface UnidadMedidaDto {
 export interface GuardarUnidadMedidaDto {
   readonly nombre: string;
   readonly simbolo: string;
+  readonly activo?: boolean;
 }
