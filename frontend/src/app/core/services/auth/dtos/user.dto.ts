@@ -8,4 +8,5 @@ export interface SaveUserDto {
   readonly nombre: string;
   readonly correo: string;
   readonly password?: string;
+  readonly activo?: boolean;
 }

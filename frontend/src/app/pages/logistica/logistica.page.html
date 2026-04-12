@@ -1,0 +1,430 @@
+<section class="logistica-page">
+  <app-page-header
+    eyebrow="Logistica"
+    title="Seguimiento logistico y cumplimiento"
+    description="Consulta envios de transferencias, clasifica rutas, gestiona transportistas y revisa reportes de cumplimiento."
+  />
+
+  <nav class="logistica-tabs" aria-label="Secciones de logistica">
+    <button type="button" class="tab-button" [class.tab-button--active]="activeSection() === 'seguimiento'" (click)="seleccionarSeccion('seguimiento')">Seguimiento</button>
+    <button type="button" class="tab-button" [class.tab-button--active]="activeSection() === 'rutas'" (click)="seleccionarSeccion('rutas')">Rutas</button>
+    <button type="button" class="tab-button" [class.tab-button--active]="activeSection() === 'transportistas'" (click)="seleccionarSeccion('transportistas')">Transportistas</button>
+    <button type="button" class="tab-button" [class.tab-button--active]="activeSection() === 'reportes'" (click)="seleccionarSeccion('reportes')">Reportes</button>
+  </nav>
+
+  @if (errorMessage()) {
+    <div class="feedback feedback--error">{{ errorMessage() }}</div>
+  }
+
+  @if (successMessage()) {
+    <div class="feedback feedback--success">{{ successMessage() }}</div>
+  }
+
+  <section class="logistica-kpis">
+    <article class="kpi-card">
+      <span class="kpi-card__label">Envios registrados</span>
+      <strong class="kpi-card__value">{{ totalEnvios() }}</strong>
+    </article>
+    <article class="kpi-card">
+      <span class="kpi-card__label">En curso</span>
+      <strong class="kpi-card__value">{{ enviosEnCurso() }}</strong>
+    </article>
+    <article class="kpi-card">
+      <span class="kpi-card__label">A tiempo</span>
+      <strong class="kpi-card__value">{{ entregasATiempo() }}</strong>
+    </article>
+    <article class="kpi-card">
+      <span class="kpi-card__label">Con retraso</span>
+      <strong class="kpi-card__value">{{ entregasTarde() }}</strong>
+    </article>
+  </section>
+
+  @if (activeSection() === 'seguimiento') {
+    <section class="panel panel--filters">
+      <form class="filters-form" [formGroup]="seguimientoForm">
+        <label class="field">
+          <span class="field__label">Estado envio</span>
+          <select formControlName="estado_envio">
+            <option value="">Todos</option>
+            <option value="EN_TRANSITO">En transito</option>
+            <option value="ENTREGADO">Entregado</option>
+            <option value="ENTREGADO_PARCIAL">Entregado parcial</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Ruta</span>
+          <select formControlName="id_ruta">
+            <option [value]="0">Todas</option>
+            @for (ruta of rutas(); track ruta.id_ruta) {
+              <option [value]="ruta.id_ruta">{{ ruta.nombre_ruta }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Sucursal</span>
+          <select formControlName="id_sucursal">
+            <option [value]="0">Todas</option>
+            @for (sucursal of sucursales(); track sucursal.id_sucursal) {
+              <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+            }
+          </select>
+        </label>
+      </form>
+    </section>
+
+    <section class="catalog-layout">
+      <article class="panel panel--table">
+        <header class="panel__header">
+          <div>
+            <h2>Bandeja logistica</h2>
+            <p>Consulta transferencias con envio, estimado, llegada real y estado logístico.</p>
+          </div>
+        </header>
+
+        <div class="table-shell">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Transferencia</th>
+                <th>Ruta</th>
+                <th>Transportista</th>
+                <th>Estado envio</th>
+                <th>Estimado</th>
+                <th>Real</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (transferencia of filteredSeguimiento(); track transferencia.id_transferencia) {
+                <tr (click)="seleccionarTransferencia(transferencia.id_transferencia)" [class.data-table__row--active]="selectedTransferenciaId() === transferencia.id_transferencia">
+                  <td>
+                    <strong>#{{ transferencia.id_transferencia }}</strong>
+                    <small>{{ transferencia.sucursal_origen_nombre }} → {{ transferencia.sucursal_destino_nombre }}</small>
+                  </td>
+                  <td>{{ transferencia.ruta_nombre }}</td>
+                  <td>{{ transferencia.transportista_nombre }}</td>
+                  <td>{{ transferencia.envio?.estado_envio || transferencia.estado }}</td>
+                  <td>{{ transferencia.envio?.fecha_estimada_llegada || 'Sin estimado' }}</td>
+                  <td>{{ transferencia.envio?.fecha_real_llegada || 'Pendiente' }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-cell">No hay envios para los filtros aplicados.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Detalle logistico</h2>
+            <p>Profundiza una transferencia para responder cuando debía llegar, cuándo llegó y por qué ruta se fue.</p>
+          </div>
+        </header>
+
+        @if (selectedTransferencia(); as transferencia) {
+          <div class="selected-card">
+            <h3>TRF #{{ transferencia.id_transferencia }}</h3>
+            <span>{{ transferencia.sucursal_origen_nombre }} → {{ transferencia.sucursal_destino_nombre }}</span>
+
+            <dl class="selected-card__stats">
+              <div>
+                <dt>Ruta</dt>
+                <dd>{{ transferencia.ruta_nombre }}</dd>
+              </div>
+              <div>
+                <dt>Transportista</dt>
+                <dd>{{ transferencia.transportista_nombre }}</dd>
+              </div>
+              <div>
+                <dt>Estado envio</dt>
+                <dd>{{ transferencia.envio?.estado_envio || 'Pendiente de despacho' }}</dd>
+              </div>
+              <div>
+                <dt>Cumplimiento</dt>
+                <dd>{{ getCumplimientoLabel(transferencia) }}</dd>
+              </div>
+              <div>
+                <dt>Fecha envio</dt>
+                <dd>{{ transferencia.envio?.fecha_envio || 'Sin envio' }}</dd>
+              </div>
+              <div>
+                <dt>Estimado</dt>
+                <dd>{{ transferencia.envio?.fecha_estimada_llegada || 'Sin estimado' }}</dd>
+              </div>
+              <div>
+                <dt>Llegada real</dt>
+                <dd>{{ transferencia.envio?.fecha_real_llegada || 'Pendiente' }}</dd>
+              </div>
+              <div>
+                <dt>Diferencia</dt>
+                <dd>
+                  @if (transferencia.diferencia_horas !== null) {
+                    {{ transferencia.diferencia_horas }} h
+                  } @else {
+                    Sin medir
+                  }
+                </dd>
+              </div>
+            </dl>
+          </div>
+        } @else {
+          <p class="panel__empty">Selecciona una transferencia para revisar su trazabilidad logística.</p>
+        }
+      </article>
+    </section>
+  }
+
+  @if (activeSection() === 'rutas') {
+    <section class="catalog-layout">
+      <article class="panel panel--table">
+        <header class="panel__header">
+          <div>
+            <h2>Rutas logisticas</h2>
+            <p>Clasifica por prioridad, costo o tiempo y administra el catálogo operativo.</p>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn--ghost" type="button" (click)="clasificarRutas('prioridad')">Prioridad</button>
+            <button class="btn btn--ghost" type="button" (click)="clasificarRutas('costo')">Costo</button>
+            <button class="btn btn--ghost" type="button" (click)="clasificarRutas('tiempo')">Tiempo</button>
+          </div>
+        </header>
+
+        <div class="table-shell">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Ruta</th>
+                <th>Prioridad</th>
+                <th>Costo</th>
+                <th>Tiempo</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (ruta of rutasClasificadas(); track ruta.id_ruta) {
+                <tr>
+                  <td><strong>{{ ruta.nombre_ruta }}</strong></td>
+                  <td>{{ ruta.prioridad || 'Sin prioridad' }}</td>
+                  <td>{{ ruta.costo_estimado | currency: 'COP':'symbol':'1.0-0' }}</td>
+                  <td>{{ ruta.tiempo_estimado || 'Sin estimado' }}</td>
+                  <td>
+                    <button class="btn btn--ghost" type="button" (click)="editarRuta(ruta)">Editar</button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="empty-cell">No hay rutas logisticas registradas.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>{{ selectedRutaId() ? 'Editar ruta' : 'Nueva ruta' }}</h2>
+            <p>Registra nombre, prioridad, costo estimado y tiempo estimado.</p>
+          </div>
+        </header>
+
+        <form class="entry-form" [formGroup]="rutaForm" (ngSubmit)="guardarRuta()">
+          <label class="field">
+            <span class="field__label">Nombre de ruta</span>
+            <input type="text" formControlName="nombre_ruta" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Prioridad</span>
+            <select formControlName="id_prioridad_ruta">
+              @for (prioridad of prioridades(); track prioridad.id_prioridad_ruta) {
+                <option [value]="prioridad.id_prioridad_ruta">{{ prioridad.nombre }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Costo estimado</span>
+            <input type="number" formControlName="costo_estimado" min="0" step="0.01" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Tiempo estimado</span>
+            <input type="text" formControlName="tiempo_estimado" placeholder="Ej. 6 horas" />
+          </label>
+
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit" [disabled]="submittingRuta()">
+              {{ submittingRuta() ? 'Guardando...' : (selectedRutaId() ? 'Actualizar ruta' : 'Crear ruta') }}
+            </button>
+            <button class="btn btn--ghost" type="button" (click)="resetRutaForm()">Limpiar</button>
+          </div>
+        </form>
+      </article>
+    </section>
+  }
+
+  @if (activeSection() === 'transportistas') {
+    <section class="catalog-layout">
+      <article class="panel panel--table">
+        <header class="panel__header">
+          <div>
+            <h2>Transportistas</h2>
+            <p>Gestiona el catálogo de transportistas disponibles para despachos.</p>
+          </div>
+        </header>
+
+        <div class="table-shell">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Identificacion</th>
+                <th>Nombre</th>
+                <th>Telefono</th>
+                <th>Estado</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (transportista of transportistas(); track transportista.id_transportista) {
+                <tr>
+                  <td>{{ transportista.identificacion }}</td>
+                  <td>{{ transportista.nombre }}</td>
+                  <td>{{ transportista.telefono || 'Sin telefono' }}</td>
+                  <td>{{ transportista.activo ? 'Activo' : 'Inactivo' }}</td>
+                  <td>
+                    <div class="form-actions">
+                      <button class="btn btn--ghost" type="button" (click)="editarTransportista(transportista)">Editar</button>
+                      <button class="btn" [class.btn--danger]="transportista.activo" [class.btn--ghost]="!transportista.activo" type="button" (click)="toggleEstadoTransportista(transportista)">
+                        {{ transportista.activo ? 'Desactivar' : 'Activar' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="empty-cell">No hay transportistas registrados.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>{{ selectedTransportistaId() ? 'Editar transportista' : 'Nuevo transportista' }}</h2>
+            <p>Registra la información base del recurso de transporte.</p>
+          </div>
+        </header>
+
+        <form class="entry-form" [formGroup]="transportistaForm" (ngSubmit)="guardarTransportista()">
+          <label class="field">
+            <span class="field__label">Identificacion</span>
+            <input type="text" formControlName="identificacion" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Nombre</span>
+            <input type="text" formControlName="nombre" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Telefono</span>
+            <input type="text" formControlName="telefono" />
+          </label>
+
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit" [disabled]="submittingTransportista()">
+              {{ submittingTransportista() ? 'Guardando...' : (selectedTransportistaId() ? 'Actualizar' : 'Crear transportista') }}
+            </button>
+            <button class="btn btn--ghost" type="button" (click)="resetTransportistaForm()">Limpiar</button>
+          </div>
+        </form>
+      </article>
+    </section>
+  }
+
+  @if (activeSection() === 'reportes') {
+    <section class="panel panel--filters">
+      <form class="filters-form" [formGroup]="reporteForm" (ngSubmit)="cargarReporte()">
+        <label class="field">
+          <span class="field__label">Sucursal</span>
+          <select formControlName="id_sucursal">
+            <option [value]="0">Todas</option>
+            @for (sucursal of sucursales(); track sucursal.id_sucursal) {
+              <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Ruta</span>
+          <select formControlName="id_ruta">
+            <option [value]="0">Todas</option>
+            @for (ruta of rutas(); track ruta.id_ruta) {
+              <option [value]="ruta.id_ruta">{{ ruta.nombre_ruta }}</option>
+            }
+          </select>
+        </label>
+
+        <button class="btn btn--primary" type="submit" [disabled]="loadingReporte()">
+          {{ loadingReporte() ? 'Consultando...' : 'Consultar reporte' }}
+        </button>
+      </form>
+    </section>
+
+    <article class="panel panel--table">
+      <header class="panel__header">
+        <div>
+          <h2>Cumplimiento logistico</h2>
+          <p>Reporte por sucursal y ruta usando tiempos estimados versus tiempos reales.</p>
+        </div>
+      </header>
+
+      <div class="table-shell">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Sucursal</th>
+              <th>Ruta</th>
+              <th>Total envios</th>
+              <th>Completas</th>
+              <th>Parciales</th>
+              <th>A tiempo</th>
+              <th>Tarde</th>
+              <th>En curso</th>
+              <th>% cumplimiento</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of reporteCumplimiento(); track item.id_sucursal + '-' + item.id_ruta) {
+              <tr>
+                <td>{{ getSucursalNombre(item.id_sucursal) }}</td>
+                <td>{{ item.ruta }}</td>
+                <td>{{ item.total_envios }}</td>
+                <td>{{ item.entregas_completas }}</td>
+                <td>{{ item.entregas_parciales }}</td>
+                <td>{{ item.entregas_a_tiempo }}</td>
+                <td>{{ item.entregas_tarde }}</td>
+                <td>{{ item.envios_en_curso }}</td>
+                <td>{{ item.porcentaje_cumplimiento }}%</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="9" class="empty-cell">No hay datos de cumplimiento para los filtros aplicados.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </article>
+  }
+</section>

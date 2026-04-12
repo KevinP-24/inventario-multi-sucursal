@@ -10,4 +10,5 @@ export interface GuardarTransportistaDto {
   readonly identificacion: string;
   readonly nombre: string;
   readonly telefono?: string | null;
+  readonly activo?: boolean;
 }

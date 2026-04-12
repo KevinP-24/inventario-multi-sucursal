@@ -12,12 +12,12 @@ export interface RecepcionTransferenciaDto {
 
 export interface ConfirmarRecepcionTransferenciaDto {
   readonly id_usuario_recibe: number;
-  readonly tipo_recepcion: string;
+  readonly tipo_recepcion?: string;
   readonly observacion?: string | null;
-  readonly incidencias?: {
+  readonly detalles: {
     readonly id_detalle_transferencia: number;
-    readonly cantidad_faltante: number;
-    readonly tratamiento: string;
+    readonly cantidad_recibida: number;
+    readonly tratamiento?: string;
     readonly descripcion?: string | null;
   }[];
 }

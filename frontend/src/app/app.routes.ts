@@ -57,6 +57,18 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'logistica',
+        loadComponent: () =>
+          import('./pages/logistica/logistica.page').then((module) => module.LogisticaPage)
+      },
+      {
+        path: 'administracion',
+        loadComponent: () =>
+          import('./pages/administracion/administracion.page').then(
+            (module) => module.AdministracionPage
+          )
+      },
+      {
         path: 'reportes',
         loadComponent: () =>
           import('./pages/reportes/reportes.page').then((module) => module.ReportesPage)

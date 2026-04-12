@@ -1,18 +1,96 @@
-<section class="module-page">
+<section class="reportes-page">
   <app-page-header
     eyebrow="Reportes"
-    title="Analitica operativa y exportacion"
-    description="Base para reportes PDF, indicadores por sucursal, filtros temporales y vistas ejecutivas."
+    title="Exportacion centralizada"
+    description="Genera PDF de inventario, ventas y transferencias desde un solo modulo, con filtros por sucursal y fecha."
   />
 
-  <div class="module-page__grid">
-    <article>
-      <h2>Consultas previstas</h2>
-      <p>Ventas por periodo, inventario valorizado, transferencias pendientes y compras por proveedor.</p>
+  @if (errorMessage()) {
+    <p class="reportes-feedback reportes-feedback--error">{{ errorMessage() }}</p>
+  }
+
+  @if (successMessage()) {
+    <p class="reportes-feedback reportes-feedback--success">{{ successMessage() }}</p>
+  }
+
+  <article class="reportes-panel">
+    <div class="reportes-panel__header">
+      <div>
+        <p class="reportes-panel__eyebrow">Filtros</p>
+        <h2>Contexto de exportacion</h2>
+      </div>
+    </div>
+
+    <form class="reportes-filters" [formGroup]="filtrosForm">
+      <label class="reportes-field">
+        <span>Sucursal</span>
+        <select formControlName="id_sucursal">
+          <option [value]="0">Toda la red</option>
+          @for (sucursal of sucursales(); track sucursal.id_sucursal) {
+            <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="reportes-field">
+        <span>Fecha desde</span>
+        <input type="date" formControlName="fecha_desde" />
+      </label>
+
+      <label class="reportes-field">
+        <span>Fecha hasta</span>
+        <input type="date" formControlName="fecha_hasta" />
+      </label>
+    </form>
+  </article>
+
+  <section class="reportes-grid">
+    <article class="report-card">
+      <div>
+        <p class="report-card__eyebrow">Inventario</p>
+        <h3>Inventario global</h3>
+        <p>Exporta inventario consolidado por rango de fechas y sucursal.</p>
+      </div>
+      <button
+        type="button"
+        class="primary-button"
+        [disabled]="downloadingReport() === 'inventario' || loading()"
+        (click)="descargarReporte('inventario')"
+      >
+        {{ downloadingReport() === 'inventario' ? 'Generando...' : 'Descargar PDF' }}
+      </button>
     </article>
-    <article>
-      <h2>Componentes utiles</h2>
-      <p>Filtros persistentes, tablas exportables, tarjetas KPI y resumenes comparativos.</p>
+
+    <article class="report-card">
+      <div>
+        <p class="report-card__eyebrow">Ventas</p>
+        <h3>Ventas globales</h3>
+        <p>Genera el consolidado comercial para toda la red o una sucursal.</p>
+      </div>
+      <button
+        type="button"
+        class="primary-button"
+        [disabled]="downloadingReport() === 'ventas' || loading()"
+        (click)="descargarReporte('ventas')"
+      >
+        {{ downloadingReport() === 'ventas' ? 'Generando...' : 'Descargar PDF' }}
+      </button>
     </article>
-  </div>
+
+    <article class="report-card">
+      <div>
+        <p class="report-card__eyebrow">Transferencias</p>
+        <h3>Transferencias globales</h3>
+        <p>Exporta el seguimiento general entre sucursales.</p>
+      </div>
+      <button
+        type="button"
+        class="primary-button"
+        [disabled]="downloadingReport() === 'transferencias' || loading()"
+        (click)="descargarReporte('transferencias')"
+      >
+        {{ downloadingReport() === 'transferencias' ? 'Generando...' : 'Descargar PDF' }}
+      </button>
+    </article>
+  </section>
 </section>

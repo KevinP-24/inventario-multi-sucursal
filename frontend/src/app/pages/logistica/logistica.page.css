@@ -1,9 +1,9 @@
-.transferencias-page {
+.logistica-page {
   display: grid;
   gap: 24px;
 }
 
-.transferencias-tabs {
+.logistica-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -42,17 +42,15 @@
   color: #15613d;
 }
 
-.transferencias-kpis,
+.logistica-kpis,
 .catalog-layout,
-.form-grid,
-.detail-builder__grid,
 .filters-form,
 .selected-card__stats {
   display: grid;
   gap: 18px;
 }
 
-.transferencias-kpis {
+.logistica-kpis {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
@@ -63,8 +61,7 @@
 
 .kpi-card,
 .panel,
-.selected-card,
-.mini-list__item {
+.selected-card {
   border: 1px solid rgba(24, 40, 72, 0.08);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.84);
@@ -104,8 +101,7 @@
   margin-bottom: 20px;
 }
 
-.panel__header h2,
-.detail-builder h3 {
+.panel__header h2 {
   margin: 0 0 6px;
 }
 
@@ -120,10 +116,9 @@
   gap: 20px;
 }
 
-.form-grid,
-.detail-builder__grid,
 .filters-form {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
 }
 
 .field {
@@ -146,13 +141,6 @@
   padding: 12px 14px;
   font: inherit;
   color: inherit;
-}
-
-.detail-builder {
-  border: 1px solid rgba(24, 40, 72, 0.08);
-  border-radius: 22px;
-  padding: 18px;
-  background: rgba(244, 248, 247, 0.7);
 }
 
 .table-shell {
@@ -179,6 +167,16 @@
   letter-spacing: 0.04em;
 }
 
+.data-table td strong,
+.data-table td small {
+  display: block;
+}
+
+.data-table td small {
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
 .data-table__row--active {
   background: rgba(14, 110, 136, 0.08);
 }
@@ -190,7 +188,6 @@
 
 .selected-card {
   padding: 20px;
-  margin-bottom: 18px;
 }
 
 .selected-card h3,
@@ -217,25 +214,6 @@
 .selected-card__stats dd {
   margin: 4px 0 0;
   font-weight: 700;
-}
-
-.mini-list {
-  display: grid;
-  gap: 14px;
-}
-
-.mini-list__item {
-  padding: 16px 18px;
-}
-
-.mini-list__item strong,
-.mini-list__item small {
-  display: block;
-}
-
-.mini-list__item small {
-  color: var(--color-text-muted);
-  margin-top: 4px;
 }
 
 .form-actions {
@@ -271,10 +249,8 @@
 }
 
 @media (max-width: 1100px) {
-  .transferencias-kpis,
+  .logistica-kpis,
   .catalog-layout,
-  .form-grid,
-  .detail-builder__grid,
   .filters-form,
   .selected-card__stats {
     grid-template-columns: 1fr 1fr;
@@ -282,10 +258,8 @@
 }
 
 @media (max-width: 760px) {
-  .transferencias-kpis,
+  .logistica-kpis,
   .catalog-layout,
-  .form-grid,
-  .detail-builder__grid,
   .filters-form,
   .selected-card__stats {
     grid-template-columns: 1fr;

@@ -1,18 +1,543 @@
-<section class="module-page">
+<section class="transferencias-page">
   <app-page-header
     eyebrow="Transferencias"
-    title="Transferencias internas y logistica"
-    description="Punto de partida para solicitudes entre sucursales, despachos, recepciones e incidencias del trayecto."
+    title="Transferencias internas entre sucursales"
+    description="Solicita, revisa, despacha y confirma recepciones completas o parciales con trazabilidad de inventario."
   />
 
-  <div class="module-page__grid">
-    <article>
-      <h2>Entidades clave</h2>
-      <p>Transferencia, detalle, envio, recepcion, incidencia y rutas logisticas.</p>
+  <nav class="transferencias-tabs" aria-label="Secciones de transferencias">
+    <button type="button" class="tab-button" [class.tab-button--active]="activeSection() === 'solicitudes'" (click)="seleccionarSeccion('solicitudes')">Solicitudes</button>
+    <button type="button" class="tab-button" [class.tab-button--active]="activeSection() === 'gestion'" (click)="seleccionarSeccion('gestion')">Gestion</button>
+    <button type="button" class="tab-button" [class.tab-button--active]="activeSection() === 'historial'" (click)="seleccionarSeccion('historial')">Historico</button>
+  </nav>
+
+  @if (errorMessage()) {
+    <div class="feedback feedback--error">{{ errorMessage() }}</div>
+  }
+
+  @if (successMessage()) {
+    <div class="feedback feedback--success">{{ successMessage() }}</div>
+  }
+
+  <section class="transferencias-kpis">
+    <article class="kpi-card">
+      <span class="kpi-card__label">Transferencias</span>
+      <strong class="kpi-card__value">{{ totalTransferencias() }}</strong>
     </article>
-    <article>
-      <h2>Experiencia base</h2>
-      <p>Wizard de solicitud, estados visibles, trazabilidad por sucursal y timeline del envio.</p>
+    <article class="kpi-card">
+      <span class="kpi-card__label">Pendientes de revision</span>
+      <strong class="kpi-card__value">{{ pendientesRevision() }}</strong>
     </article>
-  </div>
+    <article class="kpi-card">
+      <span class="kpi-card__label">En transito</span>
+      <strong class="kpi-card__value">{{ enTransito() }}</strong>
+    </article>
+    <article class="kpi-card">
+      <span class="kpi-card__label">Recepciones parciales</span>
+      <strong class="kpi-card__value">{{ recibidasParciales() }}</strong>
+    </article>
+  </section>
+
+  @if (activeSection() === 'solicitudes') {
+    <section class="catalog-layout">
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Nueva solicitud</h2>
+            <p>Registra origen, destino, prioridad y los productos solicitados.</p>
+          </div>
+        </header>
+
+        <form class="entry-form" [formGroup]="transferForm" (ngSubmit)="crearTransferencia()">
+          <div class="form-grid">
+            <label class="field">
+              <span class="field__label">Sucursal origen</span>
+              @if (hasFixedSucursal()) {
+                <input type="text" [value]="getSucursalNombre(transferForm.controls.id_sucursal_origen.value)" readonly />
+              } @else {
+                <select formControlName="id_sucursal_origen">
+                  @for (sucursal of sucursalesActivas(); track sucursal.id_sucursal) {
+                    <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+                  }
+                </select>
+              }
+            </label>
+
+            <label class="field">
+              <span class="field__label">Sucursal destino</span>
+              <select formControlName="id_sucursal_destino">
+                @for (sucursal of sucursalesDestinoDisponibles(); track sucursal.id_sucursal) {
+                  <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="field">
+              <span class="field__label">Prioridad</span>
+              <select formControlName="prioridad">
+                <option value="BAJA">Baja</option>
+                <option value="NORMAL">Normal</option>
+                <option value="ALTA">Alta</option>
+                <option value="URGENTE">Urgente</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span class="field__label">Usuario solicitante</span>
+              <input type="text" [value]="usuarioNombre()" readonly />
+            </label>
+          </div>
+
+          <label class="field">
+            <span class="field__label">Observacion</span>
+            <input type="text" formControlName="observacion" placeholder="Observaciones operativas de la solicitud" />
+          </label>
+
+          <div class="detail-builder">
+            <h3>Agregar producto</h3>
+            <div class="detail-builder__grid" [formGroup]="detalleForm">
+              <label class="field">
+                <span class="field__label">Producto</span>
+                <select formControlName="id_producto">
+                  @for (producto of productosActivos(); track producto.id_producto) {
+                    <option [value]="producto.id_producto">{{ producto.nombre }} ({{ producto.codigo }})</option>
+                  }
+                </select>
+              </label>
+
+              <label class="field">
+                <span class="field__label">Unidad</span>
+                <select formControlName="id_producto_unidad">
+                  @for (unidad of unidadesDisponiblesDetalle(); track unidad.id_producto_unidad) {
+                    <option [value]="unidad.id_producto_unidad">{{ unidad.label }}</option>
+                  }
+                </select>
+              </label>
+
+              <label class="field">
+                <span class="field__label">Cantidad solicitada</span>
+                <input type="number" formControlName="cantidad_solicitada" min="0.01" step="0.01" />
+              </label>
+
+              <button class="btn btn--ghost" type="button" (click)="agregarDetalleSolicitud()">Agregar detalle</button>
+            </div>
+          </div>
+
+          <div class="table-shell">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Unidad</th>
+                  <th>Cantidad</th>
+                  <th>Accion</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (detalle of draftDetalles(); track $index) {
+                  <tr>
+                    <td>{{ getProductoNombre(detalle.id_producto) }}</td>
+                    <td>{{ getUnidadNombre(detalle.id_producto_unidad) }}</td>
+                    <td>{{ detalle.cantidad_solicitada | number: '1.0-2' }}</td>
+                    <td>
+                      <button class="btn btn--danger" type="button" (click)="removerDetalleSolicitud($index)">Quitar</button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="empty-cell">Aun no hay productos en la solicitud.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit" [disabled]="submittingTransferencia()">
+              {{ submittingTransferencia() ? 'Guardando...' : 'Crear solicitud' }}
+            </button>
+          </div>
+        </form>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Transferencia seleccionada</h2>
+            <p>Consulta origen, destino, estado y cantidades solicitadas.</p>
+          </div>
+          @if (loadingDetalles()) {
+            <span class="panel__meta">Cargando...</span>
+          }
+        </header>
+
+        @if (selectedTransferencia(); as transferencia) {
+          <div class="selected-card">
+            <h3>TRF #{{ transferencia.id_transferencia }}</h3>
+            <span>{{ transferencia.sucursal_origen_nombre }} → {{ transferencia.sucursal_destino_nombre }}</span>
+
+            <dl class="selected-card__stats">
+              <div>
+                <dt>Estado</dt>
+                <dd>{{ transferencia.estado }}</dd>
+              </div>
+              <div>
+                <dt>Prioridad</dt>
+                <dd>{{ transferencia.prioridad }}</dd>
+              </div>
+              <div>
+                <dt>Solicita</dt>
+                <dd>{{ usuarioNombre() }}</dd>
+              </div>
+              <div>
+                <dt>Fecha</dt>
+                <dd>{{ transferencia.fecha_solicitud || 'Sin fecha' }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="mini-list">
+            @for (detalle of detallesTransferenciaSeleccionada(); track detalle.id_detalle_transferencia) {
+              <article class="mini-list__item">
+                <strong>{{ detalle.producto }}</strong>
+                <small>{{ detalle.codigo_producto }} - {{ detalle.unidad }}</small>
+                <small>
+                  Solic.: {{ detalle.cantidad_solicitada | number: '1.0-2' }} -
+                  Aprob.: {{ detalle.cantidad_aprobada | number: '1.0-2' }} -
+                  Recib.: {{ detalle.cantidad_recibida | number: '1.0-2' }}
+                </small>
+              </article>
+            } @empty {
+              <p class="panel__empty">Selecciona una transferencia para consultar sus detalles.</p>
+            }
+          </div>
+        } @else {
+          <p class="panel__empty">No hay transferencia seleccionada.</p>
+        }
+      </article>
+    </section>
+
+    <article class="panel panel--table">
+      <header class="panel__header">
+        <div>
+          <h2>Bandeja de transferencias</h2>
+          <p>Consulta solicitudes creadas y selecciona una para continuar su ciclo.</p>
+        </div>
+      </header>
+
+      <div class="table-shell">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Transferencia</th>
+              <th>Origen</th>
+              <th>Destino</th>
+              <th>Estado</th>
+              <th>Prioridad</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (transferencia of transferenciasVm(); track transferencia.id_transferencia) {
+              <tr (click)="seleccionarTransferencia(transferencia.id_transferencia)" [class.data-table__row--active]="selectedTransferenciaId() === transferencia.id_transferencia">
+                <td>#{{ transferencia.id_transferencia }}</td>
+                <td>{{ transferencia.sucursal_origen_nombre }}</td>
+                <td>{{ transferencia.sucursal_destino_nombre }}</td>
+                <td>{{ transferencia.estado }}</td>
+                <td>{{ transferencia.prioridad }}</td>
+                <td>{{ transferencia.fecha_solicitud || 'Sin fecha' }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="empty-cell">No hay transferencias registradas.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </article>
+  }
+
+  @if (activeSection() === 'gestion') {
+    <section class="catalog-layout">
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Revision y aprobacion</h2>
+            <p>Valida disponibilidad en origen y ajusta cantidades aprobadas.</p>
+          </div>
+        </header>
+
+        @if (selectedTransferencia()?.puede_revisar) {
+          <form class="entry-form" [formGroup]="revisionForm">
+            <label class="field">
+              <span class="field__label">Observacion de revision</span>
+              <input type="text" formControlName="observacion" placeholder="Observaciones al aprobar o rechazar" />
+            </label>
+
+            <div class="table-shell">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Solicitada</th>
+                    <th>Stock origen</th>
+                    <th>Aprobada</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (detalle of reviewDrafts(); track detalle.id_detalle_transferencia) {
+                    <tr>
+                      <td>{{ detalle.producto }}</td>
+                      <td>{{ detalle.cantidad_solicitada | number: '1.0-2' }}</td>
+                      <td>{{ detalle.stock_disponible | number: '1.0-2' }}</td>
+                      <td>
+                        <input type="number" min="0" step="0.01" [value]="detalle.cantidad_aprobada" (input)="updateRevisionCantidad(detalle.id_detalle_transferencia, $any($event.target).value)" />
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="4" class="empty-cell">No hay detalles para revisar.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn--primary" type="button" [disabled]="submittingRevision()" (click)="aprobarTransferencia()">
+                {{ submittingRevision() ? 'Procesando...' : 'Aprobar / ajustar' }}
+              </button>
+              <button class="btn btn--danger" type="button" [disabled]="submittingRevision()" (click)="rechazarTransferencia()">Rechazar</button>
+            </div>
+          </form>
+        } @else {
+          <p class="panel__empty">Selecciona una transferencia en estado SOLICITADA y con permisos de origen para revisarla.</p>
+        }
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Registro de envio</h2>
+            <p>Asigna ruta, transportista y pone la transferencia en transito.</p>
+          </div>
+        </header>
+
+        @if (selectedTransferencia()?.puede_enviar) {
+          <form class="entry-form" [formGroup]="envioForm">
+            <label class="field">
+              <span class="field__label">Ruta logistica</span>
+              <select formControlName="id_ruta">
+                @for (ruta of rutas(); track ruta.id_ruta) {
+                  <option [value]="ruta.id_ruta">{{ ruta.nombre_ruta }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="field">
+              <span class="field__label">Transportista</span>
+              <select formControlName="id_transportista">
+                @for (transportista of transportistasActivos(); track transportista.id_transportista) {
+                  <option [value]="transportista.id_transportista">{{ transportista.nombre }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="field">
+              <span class="field__label">Fecha estimada de llegada</span>
+              <input type="datetime-local" formControlName="fecha_estimada_llegada" />
+            </label>
+
+            <div class="form-actions">
+              <button class="btn btn--primary" type="button" [disabled]="submittingEnvio()" (click)="registrarEnvio()">
+                {{ submittingEnvio() ? 'Registrando...' : 'Registrar envio' }}
+              </button>
+            </div>
+          </form>
+        } @else {
+          <p class="panel__empty">Selecciona una transferencia APROBADA y con permisos de origen para registrar su despacho.</p>
+        }
+      </article>
+    </section>
+
+    <section class="catalog-layout">
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Confirmacion de recepcion</h2>
+            <p>Registra cantidades recibidas, faltantes y tratamiento de diferencias.</p>
+          </div>
+        </header>
+
+        @if (selectedTransferencia()?.puede_recibir) {
+          <form class="entry-form" [formGroup]="recepcionForm">
+            <label class="field">
+              <span class="field__label">Observacion de recepcion</span>
+              <input type="text" formControlName="observacion" placeholder="Observaciones al recibir la mercancia" />
+            </label>
+
+            <div class="table-shell">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Aprobada</th>
+                    <th>Recibida</th>
+                    <th>Faltante</th>
+                    <th>Tratamiento</th>
+                    <th>Descripcion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (detalle of recepcionDrafts(); track detalle.id_detalle_transferencia) {
+                    <tr>
+                      <td>{{ detalle.producto }}</td>
+                      <td>{{ detalle.cantidad_aprobada | number: '1.0-2' }}</td>
+                      <td>
+                        <input type="number" min="0" step="0.01" [value]="detalle.cantidad_recibida" (input)="updateRecepcionCantidad(detalle.id_detalle_transferencia, $any($event.target).value)" />
+                      </td>
+                      <td>{{ getFaltanteRecepcion(detalle) | number: '1.0-2' }}</td>
+                      <td>
+                        <select [value]="detalle.tratamiento" (change)="updateRecepcionTratamiento(detalle.id_detalle_transferencia, $any($event.target).value)">
+                          <option value="">Sin diferencia</option>
+                          <option value="REENVIO">Reenvio</option>
+                          <option value="AJUSTE">Ajuste</option>
+                          <option value="RECLAMACION">Reclamacion</option>
+                        </select>
+                      </td>
+                      <td>
+                        <input type="text" [value]="detalle.descripcion" (input)="updateRecepcionDescripcion(detalle.id_detalle_transferencia, $any($event.target).value)" placeholder="Describe la incidencia" />
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="6" class="empty-cell">No hay cantidades aprobadas pendientes por recibir.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn--primary" type="button" [disabled]="submittingRecepcion()" (click)="confirmarRecepcion()">
+                {{ submittingRecepcion() ? 'Confirmando...' : 'Confirmar recepcion' }}
+              </button>
+            </div>
+          </form>
+        } @else {
+          <p class="panel__empty">Selecciona una transferencia ENVIADA y con permisos de destino para confirmar su recepcion.</p>
+        }
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Incidencias recientes</h2>
+            <p>Faltantes y tratamientos detectados en la ultima recepcion registrada.</p>
+          </div>
+        </header>
+
+        <div class="mini-list">
+          @for (incidencia of latestIncidencias(); track incidencia.id_incidencia) {
+            <article class="mini-list__item">
+              <strong>Detalle #{{ incidencia.id_detalle_transferencia }}</strong>
+              <small>Faltante: {{ incidencia.cantidad_faltante | number: '1.0-2' }}</small>
+              <small>Tratamiento: {{ incidencia.tratamiento }} - {{ incidencia.descripcion || 'Sin descripcion' }}</small>
+            </article>
+          } @empty {
+            <p class="panel__empty">Aun no hay incidencias recientes para mostrar.</p>
+          }
+        </div>
+      </article>
+    </section>
+  }
+
+  @if (activeSection() === 'historial') {
+    <section class="panel panel--filters">
+      <form class="filters-form" [formGroup]="filtrosForm" (ngSubmit)="aplicarFiltros()">
+        <label class="field">
+          <span class="field__label">Estado</span>
+          <select formControlName="estado">
+            <option value="">Todos</option>
+            @for (estado of estados(); track estado.id_estado_transferencia) {
+              <option [value]="estado.nombre">{{ estado.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Origen</span>
+          <select formControlName="id_sucursal_origen">
+            <option [value]="0">Todas</option>
+            @for (sucursal of sucursalesActivas(); track sucursal.id_sucursal) {
+              <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Destino</span>
+          <select formControlName="id_sucursal_destino">
+            <option [value]="0">Todas</option>
+            @for (sucursal of sucursalesActivas(); track sucursal.id_sucursal) {
+              <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Desde</span>
+          <input type="date" formControlName="fecha_desde" />
+        </label>
+
+        <label class="field">
+          <span class="field__label">Hasta</span>
+          <input type="date" formControlName="fecha_hasta" />
+        </label>
+
+        <button class="btn btn--primary" type="submit">Filtrar</button>
+      </form>
+    </section>
+
+    <article class="panel panel--table">
+      <header class="panel__header">
+        <div>
+          <h2>Seguimiento historico</h2>
+          <p>Consulta estado, origen, destino y avance de las transferencias registradas.</p>
+        </div>
+      </header>
+
+      <div class="table-shell">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Transferencia</th>
+              <th>Origen</th>
+              <th>Destino</th>
+              <th>Estado</th>
+              <th>Prioridad</th>
+              <th>Envio</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (transferencia of bandejaVm(); track transferencia.id_transferencia) {
+              <tr (click)="seleccionarTransferencia(transferencia.id_transferencia)" [class.data-table__row--active]="selectedTransferenciaId() === transferencia.id_transferencia">
+                <td>#{{ transferencia.id_transferencia }}</td>
+                <td>{{ getSucursalNombre(transferencia.id_sucursal_origen) }}</td>
+                <td>{{ getSucursalNombre(transferencia.id_sucursal_destino) }}</td>
+                <td>{{ transferencia.estado }}</td>
+                <td>{{ transferencia.prioridad }}</td>
+                <td>{{ transferencia.envio?.estado_envio || 'Sin envio' }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="empty-cell">No hay transferencias para los filtros aplicados.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </article>
+  }
 </section>

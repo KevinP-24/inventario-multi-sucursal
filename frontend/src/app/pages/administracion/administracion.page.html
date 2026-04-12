@@ -1,0 +1,513 @@
+<app-page-header
+  eyebrow="Control global"
+  title="Administracion"
+  description="Gestiona usuarios, sucursales, parametros y la vista consolidada de toda la red."
+></app-page-header>
+
+<section class="admin-page">
+  <div class="section-switcher">
+    <button
+      type="button"
+      class="section-switcher__button"
+      [class.is-active]="activeSection() === 'usuarios'"
+      (click)="seleccionarSeccion('usuarios')"
+    >
+      Usuarios
+    </button>
+    <button
+      type="button"
+      class="section-switcher__button"
+      [class.is-active]="activeSection() === 'sucursales'"
+      (click)="seleccionarSeccion('sucursales')"
+    >
+      Sucursales
+    </button>
+    <button
+      type="button"
+      class="section-switcher__button"
+      [class.is-active]="activeSection() === 'parametros'"
+      (click)="seleccionarSeccion('parametros')"
+    >
+      Parametros
+    </button>
+    <button
+      type="button"
+      class="section-switcher__button"
+      [class.is-active]="activeSection() === 'global'"
+      (click)="seleccionarSeccion('global')"
+    >
+      Global
+    </button>
+  </div>
+
+  @if (errorMessage()) {
+    <p class="feedback feedback--error">{{ errorMessage() }}</p>
+  }
+
+  @if (successMessage()) {
+    <p class="feedback feedback--success">{{ successMessage() }}</p>
+  }
+
+  @if (loading()) {
+    <article class="panel panel--loading">
+      <p>Cargando modulo administrativo...</p>
+    </article>
+  } @else {
+    @if (activeSection() === 'usuarios') {
+      <div class="content-grid content-grid--split">
+        <article class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__eyebrow">RF43</p>
+              <h2>Gestion de usuarios</h2>
+            </div>
+            <button type="button" class="ghost-button" (click)="resetUsuarioForm()">Nuevo usuario</button>
+          </div>
+
+          <form class="form-grid" [formGroup]="usuarioForm" (ngSubmit)="guardarUsuario()">
+            <label class="field">
+              <span>Nombre</span>
+              <input type="text" formControlName="nombre" placeholder="Nombre completo" />
+            </label>
+
+            <label class="field">
+              <span>Correo</span>
+              <input type="email" formControlName="correo" placeholder="usuario@correo.com" />
+            </label>
+
+            <label class="field">
+              <span>Rol</span>
+              <select formControlName="id_rol">
+                <option [value]="0">Selecciona un rol</option>
+                @for (rol of rolesActivos(); track rol.id_rol) {
+                  <option [value]="rol.id_rol">{{ rol.nombre }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Sucursal</span>
+              <select formControlName="id_sucursal" [disabled]="!selectedRoleRequiresSucursal()">
+                <option [value]="0">
+                  {{ selectedRoleRequiresSucursal() ? 'Selecciona sucursal' : 'No aplica' }}
+                </option>
+                @for (sucursal of sucursales(); track sucursal.id_sucursal) {
+                  <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="field">
+              <span>{{ selectedUsuarioId() ? 'Nueva contrasena' : 'Contrasena' }}</span>
+              <input
+                type="password"
+                formControlName="password"
+                [placeholder]="selectedUsuarioId() ? 'Opcional para actualizar' : 'Obligatoria al crear'"
+              />
+            </label>
+
+            <label class="field field--toggle">
+              <span>Estado</span>
+              <select formControlName="activo">
+                <option [ngValue]="true">Activo</option>
+                <option [ngValue]="false">Inactivo</option>
+              </select>
+            </label>
+
+            <div class="form-actions">
+              <button type="submit" class="primary-button" [disabled]="submittingUsuario()">
+                {{ selectedUsuarioId() ? 'Guardar cambios' : 'Crear usuario' }}
+              </button>
+              <button type="button" class="ghost-button" (click)="resetUsuarioForm()">Limpiar</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__eyebrow">Usuarios</p>
+              <h2>Listado general</h2>
+            </div>
+            <div class="panel__meta">{{ totalUsuarios() }} registrados</div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Correo</th>
+                  <th>Rol</th>
+                  <th>Sucursal</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (usuario of usuarios(); track usuario.id_usuario) {
+                  <tr>
+                    <td>{{ usuario.nombre }}</td>
+                    <td>{{ usuario.correo }}</td>
+                    <td>{{ getRolNombre(usuario.id_rol) }}</td>
+                    <td>{{ getSucursalNombre(usuario.id_sucursal) }}</td>
+                    <td>
+                      <span class="status-pill" [class.is-inactive]="!usuario.activo">
+                        {{ getStateLabel(usuario.activo) }}
+                      </span>
+                    </td>
+                    <td class="actions-cell">
+                      <button type="button" class="ghost-button" (click)="editarUsuario(usuario)">
+                        Editar
+                      </button>
+                      <button type="button" class="ghost-button" (click)="toggleEstadoUsuario(usuario)">
+                        {{ usuario.activo ? 'Desactivar' : 'Activar' }}
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6" class="empty-cell">No hay usuarios registrados.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    }
+
+    @if (activeSection() === 'sucursales') {
+      <div class="content-grid content-grid--split">
+        <article class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__eyebrow">RF44</p>
+              <h2>Gestion de sucursales</h2>
+            </div>
+            <button type="button" class="ghost-button" (click)="resetSucursalForm()">Nueva sucursal</button>
+          </div>
+
+          <form class="form-grid" [formGroup]="sucursalForm" (ngSubmit)="guardarSucursal()">
+            <label class="field">
+              <span>Nombre</span>
+              <input type="text" formControlName="nombre" placeholder="Sucursal centro" />
+            </label>
+
+            <label class="field">
+              <span>Ciudad</span>
+              <input type="text" formControlName="ciudad" placeholder="Bogota" />
+            </label>
+
+            <label class="field field--full">
+              <span>Direccion</span>
+              <input type="text" formControlName="direccion" placeholder="Direccion principal" />
+            </label>
+
+            <label class="field">
+              <span>Telefono</span>
+              <input type="text" formControlName="telefono" placeholder="Telefono de contacto" />
+            </label>
+
+            <label class="field">
+              <span>Estado</span>
+              <select formControlName="estado">
+                <option value="activa">Activa</option>
+                <option value="inactiva">Inactiva</option>
+              </select>
+            </label>
+
+            <div class="form-actions">
+              <button type="submit" class="primary-button" [disabled]="submittingSucursal()">
+                {{ selectedSucursalId() ? 'Guardar cambios' : 'Crear sucursal' }}
+              </button>
+              <button type="button" class="ghost-button" (click)="resetSucursalForm()">Limpiar</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__eyebrow">Red</p>
+              <h2>Sucursales registradas</h2>
+            </div>
+            <div class="panel__meta">{{ totalSucursales() }} en total</div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Ciudad</th>
+                  <th>Direccion</th>
+                  <th>Telefono</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (sucursal of sucursales(); track sucursal.id_sucursal) {
+                  <tr>
+                    <td>{{ sucursal.nombre }}</td>
+                    <td>{{ sucursal.ciudad }}</td>
+                    <td>{{ sucursal.direccion }}</td>
+                    <td>{{ sucursal.telefono || 'Sin telefono' }}</td>
+                    <td>
+                      <span class="status-pill" [class.is-inactive]="sucursal.estado.toLowerCase() === 'inactiva'">
+                        {{ sucursal.estado }}
+                      </span>
+                    </td>
+                    <td class="actions-cell">
+                      <button type="button" class="ghost-button" (click)="editarSucursal(sucursal)">
+                        Editar
+                      </button>
+                      <button type="button" class="ghost-button" (click)="toggleEstadoSucursal(sucursal)">
+                        {{ sucursal.estado.toLowerCase() === 'inactiva' ? 'Activar' : 'Desactivar' }}
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6" class="empty-cell">No hay sucursales registradas.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    }
+
+    @if (activeSection() === 'parametros') {
+      <div class="content-grid content-grid--split">
+        <article class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__eyebrow">RF45</p>
+              <h2>Parametros del sistema</h2>
+            </div>
+            <button type="button" class="ghost-button" (click)="resetParametroForm()">Nuevo parametro</button>
+          </div>
+
+          <form class="form-grid" [formGroup]="parametroForm" (ngSubmit)="guardarParametro()">
+            <label class="field">
+              <span>Clave</span>
+              <input type="text" formControlName="clave" placeholder="sistema.nombre" />
+            </label>
+
+            <label class="field">
+              <span>Valor</span>
+              <input type="text" formControlName="valor" placeholder="Valor del parametro" />
+            </label>
+
+            <label class="field field--full">
+              <span>Descripcion</span>
+              <textarea
+                rows="4"
+                formControlName="descripcion"
+                placeholder="Describe el uso del parametro"
+              ></textarea>
+            </label>
+
+            <label class="field field--toggle">
+              <span>Estado</span>
+              <select formControlName="activo">
+                <option [ngValue]="true">Activo</option>
+                <option [ngValue]="false">Inactivo</option>
+              </select>
+            </label>
+
+            <div class="form-actions">
+              <button type="submit" class="primary-button" [disabled]="submittingParametro()">
+                {{ selectedParametroId() ? 'Guardar cambios' : 'Crear parametro' }}
+              </button>
+              <button type="button" class="ghost-button" (click)="resetParametroForm()">Limpiar</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__eyebrow">Configuracion</p>
+              <h2>Catalogo general</h2>
+            </div>
+            <div class="panel__meta">{{ totalParametros() }} claves registradas</div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Clave</th>
+                  <th>Valor</th>
+                  <th>Descripcion</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (parametro of parametros(); track parametro.id_parametro) {
+                  <tr>
+                    <td>{{ parametro.clave }}</td>
+                    <td>{{ parametro.valor }}</td>
+                    <td>{{ parametro.descripcion || 'Sin descripcion' }}</td>
+                    <td>
+                      <span class="status-pill" [class.is-inactive]="!parametro.activo">
+                        {{ getStateLabel(parametro.activo) }}
+                      </span>
+                    </td>
+                    <td class="actions-cell">
+                      <button type="button" class="ghost-button" (click)="editarParametro(parametro)">
+                        Editar
+                      </button>
+                      <button type="button" class="ghost-button" (click)="toggleEstadoParametro(parametro)">
+                        {{ parametro.activo ? 'Desactivar' : 'Activar' }}
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="empty-cell">No hay parametros configurados.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    }
+
+    @if (activeSection() === 'global') {
+      <div class="content-grid">
+        <article class="panel">
+          <div class="panel__header">
+            <div>
+              <p class="panel__eyebrow">RF46</p>
+              <h2>Vista global de la red</h2>
+            </div>
+          </div>
+
+          <form class="filters-grid" [formGroup]="globalFiltersForm">
+            <label class="field">
+              <span>Sucursal</span>
+              <select formControlName="id_sucursal">
+                <option [value]="0">Toda la red</option>
+                @for (sucursal of sucursales(); track sucursal.id_sucursal) {
+                  <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Fecha desde</span>
+              <input type="date" formControlName="fecha_desde" />
+            </label>
+
+            <label class="field">
+              <span>Fecha hasta</span>
+              <input type="date" formControlName="fecha_hasta" />
+            </label>
+          </form>
+
+          <div class="summary-grid">
+            <article class="summary-card">
+              <span>Usuarios activos</span>
+              <strong>{{ usuariosActivos().length }}</strong>
+              <small>{{ totalUsuarios() }} registrados</small>
+            </article>
+            <article class="summary-card">
+              <span>Sucursales activas</span>
+              <strong>{{ sucursalesActivas().length }}</strong>
+              <small>{{ totalSucursales() }} en la red</small>
+            </article>
+            <article class="summary-card">
+              <span>Stock consolidado</span>
+              <strong>{{ stockGlobal() | number:'1.0-0' }}</strong>
+              <small>Valor {{ valorInventarioGlobal() | currency:'COP':'symbol':'1.0-0' }}</small>
+            </article>
+            <article class="summary-card">
+              <span>Ventas filtradas</span>
+              <strong>{{ ventasFiltradas().length }}</strong>
+              <small>Total {{ totalVentasGlobal() | currency:'COP':'symbol':'1.0-0' }}</small>
+            </article>
+            <article class="summary-card">
+              <span>Compras filtradas</span>
+              <strong>{{ comprasFiltradas().length }}</strong>
+              <small>Total {{ totalComprasGlobal() | currency:'COP':'symbol':'1.0-0' }}</small>
+            </article>
+            <article class="summary-card">
+              <span>Transferencias</span>
+              <strong>{{ transferenciasFiltradas().length }}</strong>
+              <small>Seguimiento de toda la red</small>
+            </article>
+          </div>
+        </article>
+
+        <div class="content-grid content-grid--split">
+          <article class="panel">
+            <div class="panel__header">
+              <div>
+                <p class="panel__eyebrow">Comparativo</p>
+                <h2>Resumen por sucursal</h2>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Sucursal</th>
+                    <th>Usuarios</th>
+                    <th>Stock</th>
+                    <th>Ventas</th>
+                    <th>Compras</th>
+                    <th>Transferencias</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of sucursalGlobalVm(); track item.id_sucursal) {
+                    <tr>
+                      <td>
+                        <div class="stacked-cell">
+                          <strong>{{ item.nombre }}</strong>
+                          <small>{{ item.ciudad }} · {{ item.estado }}</small>
+                        </div>
+                      </td>
+                      <td>{{ item.usuarios_activos }}/{{ item.usuarios }}</td>
+                      <td>
+                        <div class="stacked-cell">
+                          <strong>{{ item.stock_total | number:'1.0-0' }}</strong>
+                          <small>{{ item.productos_con_stock }} productos</small>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="stacked-cell">
+                          <strong>{{ item.ventas }}</strong>
+                          <small>{{ item.total_ventas | currency:'COP':'symbol':'1.0-0' }}</small>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="stacked-cell">
+                          <strong>{{ item.compras }}</strong>
+                          <small>{{ item.total_compras | currency:'COP':'symbol':'1.0-0' }}</small>
+                        </div>
+                      </td>
+                      <td>{{ item.transferencias }}</td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="6" class="empty-cell">No hay datos globales para mostrar.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </div>
+    }
+  }
+</section>

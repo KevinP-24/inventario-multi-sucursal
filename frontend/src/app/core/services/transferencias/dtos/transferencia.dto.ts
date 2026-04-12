@@ -31,6 +31,7 @@ export interface CrearTransferenciaDto {
 export interface RevisarTransferenciaDto {
   readonly accion: AccionRevisionTransferenciaDto;
   readonly detalles?: RevisionTransferenciaDetalleDto[];
+  readonly observacion?: string | null;
 }
 
 export interface RegistrarEnvioTransferenciaDto {

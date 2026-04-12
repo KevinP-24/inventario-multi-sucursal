@@ -52,6 +52,20 @@ export const SECTION_ACCESS_CONFIG: readonly SectionAccessConfig[] = [
     roles: [UserRoleDto.ADMIN_GENERAL, UserRoleDto.ADMIN_SUCURSAL, UserRoleDto.OPERARIO_INVENTARIO]
   },
   {
+    label: 'Logistica',
+    path: '/app/logistica',
+    icon: 'logistica',
+    description: 'Rutas, envios y cumplimiento logistico',
+    roles: [UserRoleDto.ADMIN_GENERAL, UserRoleDto.ADMIN_SUCURSAL, UserRoleDto.OPERARIO_INVENTARIO]
+  },
+  {
+    label: 'Administracion',
+    path: '/app/administracion',
+    icon: 'administracion',
+    description: 'Usuarios, sucursales, parametros y vista global de la red',
+    roles: [UserRoleDto.ADMIN_GENERAL]
+  },
+  {
     label: 'Reportes',
     path: '/app/reportes',
     icon: 'reportes',
