@@ -326,11 +326,16 @@ def aplicar_cantidades_aprobadas(transferencia, detalles_aprobados):
             )
             continue
 
+        factor_conversion = convertir_valor_a_decimal(
+            detalle.producto_unidad.factor_conversion
+        )
+        cantidad_aprobada_base = cantidad_aprobada * factor_conversion
+
         inventario = consultar_inventario_por_sucursal_y_producto_en_bd(
             transferencia.id_sucursal_origen,
             detalle.id_producto,
         )
-        if not inventario or inventario.cantidad_actual < cantidad_aprobada:
+        if not inventario or inventario.cantidad_actual < cantidad_aprobada_base:
             errores[f"detalle_{posicion}_stock"] = (
                 "La sucursal origen no tiene stock suficiente para esa cantidad."
             )
@@ -354,14 +359,19 @@ def descontar_inventario_origen_por_envio(transferencia, id_tipo_salida):
         if detalle.cantidad_aprobada <= 0:
             continue
 
+        factor_conversion = convertir_valor_a_decimal(
+            detalle.producto_unidad.factor_conversion
+        )
+        cantidad_aprobada_base = detalle.cantidad_aprobada * factor_conversion
+
         inventario = consultar_inventario_por_sucursal_y_producto_en_bd(
             transferencia.id_sucursal_origen,
             detalle.id_producto,
         )
-        if not inventario or inventario.cantidad_actual < detalle.cantidad_aprobada:
+        if not inventario or inventario.cantidad_actual < cantidad_aprobada_base:
             raise ValueError("Stock insuficiente al registrar el envio de transferencia.")
 
-        inventario.cantidad_actual -= detalle.cantidad_aprobada
+        inventario.cantidad_actual -= cantidad_aprobada_base
         db.session.add(inventario)
         db.session.flush()
 
@@ -370,7 +380,7 @@ def descontar_inventario_origen_por_envio(transferencia, id_tipo_salida):
             id_usuario=transferencia.id_usuario_solicita,
             id_tipo_movimiento=id_tipo_salida,
             motivo=f"Envio de transferencia {transferencia.id_transferencia}",
-            cantidad=detalle.cantidad_aprobada,
+            cantidad=cantidad_aprobada_base,
             modulo_origen="TRANSFERENCIA",
             id_origen=transferencia.id_transferencia,
         ))
@@ -439,6 +449,11 @@ def aplicar_recepcion_en_inventario_destino(
         db.session.add(detalle)
 
         if cantidad_recibida > 0:
+            factor_conversion = convertir_valor_a_decimal(
+                detalle.producto_unidad.factor_conversion
+            )
+            cantidad_recibida_base = cantidad_recibida * factor_conversion
+
             inventario = consultar_inventario_por_sucursal_y_producto_en_bd(
                 transferencia.id_sucursal_destino,
                 detalle.id_producto,
@@ -451,7 +466,7 @@ def aplicar_recepcion_en_inventario_destino(
                     costo_promedio=0,
                 )
 
-            inventario.cantidad_actual += cantidad_recibida
+            inventario.cantidad_actual += cantidad_recibida_base
             db.session.add(inventario)
             db.session.flush()
 
@@ -460,7 +475,7 @@ def aplicar_recepcion_en_inventario_destino(
                 id_usuario=recepcion.id_usuario_recibe,
                 id_tipo_movimiento=id_tipo_entrada,
                 motivo=f"Recepcion de transferencia {transferencia.id_transferencia}",
-                cantidad=cantidad_recibida,
+                cantidad=cantidad_recibida_base,
                 modulo_origen="TRANSFERENCIA",
                 id_origen=transferencia.id_transferencia,
             ))

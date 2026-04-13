@@ -160,6 +160,12 @@ def registrar_entrada_de_compra_en_inventario(orden, id_usuario_recepcion, id_ti
     movimientos = []
 
     for detalle in orden.detalles:
+        factor_conversion = convertir_valor_a_decimal(
+            detalle.producto_unidad.factor_conversion
+        )
+        cantidad_base = detalle.cantidad * factor_conversion
+        costo_unitario_base = detalle.precio_unitario / factor_conversion
+
         inventario = consultar_inventario_por_sucursal_y_producto_en_bd(
             orden.id_sucursal,
             detalle.id_producto,
@@ -170,21 +176,20 @@ def registrar_entrada_de_compra_en_inventario(orden, id_usuario_recepcion, id_ti
                 id_sucursal=orden.id_sucursal,
                 id_producto=detalle.id_producto,
                 cantidad_actual=0,
-                costo_promedio=detalle.precio_unitario,
+                costo_promedio=costo_unitario_base,
             )
 
         inventario.costo_promedio = calcular_costo_promedio_ponderado(
             inventario.cantidad_actual,
             inventario.costo_promedio,
-            detalle.cantidad,
-            detalle.precio_unitario,
+            cantidad_base,
+            costo_unitario_base,
         )
-        inventario.cantidad_actual += detalle.cantidad
+        inventario.cantidad_actual += cantidad_base
         db.session.add(inventario)
 
-        # Actualizar ultimo costo de compra en el producto global
         if detalle.producto:
-            detalle.producto.ultimo_costo_compra = detalle.precio_unitario
+            detalle.producto.ultimo_costo_compra = costo_unitario_base
             db.session.add(detalle.producto)
 
         db.session.flush()
@@ -194,7 +199,7 @@ def registrar_entrada_de_compra_en_inventario(orden, id_usuario_recepcion, id_ti
             id_usuario=id_usuario_recepcion,
             id_tipo_movimiento=id_tipo_movimiento,
             motivo="Recepcion de orden de compra",
-            cantidad=detalle.cantidad,
+            cantidad=cantidad_base,
             modulo_origen="COMPRA",
             id_origen=orden.id_orden_compra,
         )

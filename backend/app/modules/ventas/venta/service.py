@@ -148,9 +148,14 @@ def preparar_detalles_de_venta(datos):
 
     for posicion, detalle_recibido in enumerate(datos["detalles"], start=1):
         id_producto = detalle_recibido["id_producto"]
+        id_producto_unidad = detalle_recibido["id_producto_unidad"]
         cantidad = convertir_valor_a_decimal(detalle_recibido["cantidad"])
         descuento = convertir_valor_a_decimal(detalle_recibido.get("descuento", 0))
         prefijo = f"detalle_{posicion}"
+
+        producto_unidad = consultar_producto_unidad_por_id_en_bd(id_producto_unidad)
+        factor_conversion = convertir_valor_a_decimal(producto_unidad.factor_conversion)
+        cantidad_base = cantidad * factor_conversion
 
         precio = consultar_precio_por_producto_y_lista_en_bd(
             id_producto,
@@ -170,7 +175,10 @@ def preparar_detalles_de_venta(datos):
             errores[f"{prefijo}_stock"] = "El producto no tiene inventario en esta sucursal."
             continue
 
-        cantidad_total_producto = sumar_cantidad_producto_en_venta(datos["detalles"], id_producto)
+        cantidad_total_producto = sumar_cantidad_producto_en_venta(
+            datos["detalles"],
+            id_producto,
+        )
         if inventario.cantidad_actual < cantidad_total_producto:
             errores[f"{prefijo}_stock"] = (
                 "Stock insuficiente para confirmar la venta de este producto."
@@ -185,7 +193,7 @@ def preparar_detalles_de_venta(datos):
         subtotal = subtotal_bruto - descuento
         detalle = DetalleVenta(
             id_producto=id_producto,
-            id_producto_unidad=detalle_recibido["id_producto_unidad"],
+            id_producto_unidad=id_producto_unidad,
             cantidad=cantidad,
             precio_unitario=precio.precio,
             descuento=descuento,
@@ -204,11 +212,20 @@ def preparar_detalles_de_venta(datos):
 
 
 def sumar_cantidad_producto_en_venta(detalles, id_producto):
-    """Suma cantidades repetidas del mismo producto dentro de la venta."""
+    """Suma cantidades repetidas del mismo producto en unidad base."""
     total = convertir_valor_a_decimal(0)
+
     for detalle in detalles:
-        if detalle["id_producto"] == id_producto:
-            total += convertir_valor_a_decimal(detalle["cantidad"])
+        if detalle["id_producto"] != id_producto:
+            continue
+
+        cantidad = convertir_valor_a_decimal(detalle["cantidad"])
+        producto_unidad = consultar_producto_unidad_por_id_en_bd(
+            detalle["id_producto_unidad"]
+        )
+        factor_conversion = convertir_valor_a_decimal(producto_unidad.factor_conversion)
+
+        total += cantidad * factor_conversion
 
     return total
 
@@ -217,7 +234,13 @@ def actualizar_inventario_y_movimientos_por_venta(venta, inventarios, id_tipo_sa
     """Descuenta stock y deja un movimiento SALIDA por cada detalle vendido."""
     for detalle in venta.detalles:
         inventario = inventarios[detalle.id_producto]
-        inventario.cantidad_actual -= detalle.cantidad
+
+        factor_conversion = convertir_valor_a_decimal(
+            detalle.producto_unidad.factor_conversion
+        )
+        cantidad_base = detalle.cantidad * factor_conversion
+
+        inventario.cantidad_actual -= cantidad_base
         db.session.add(inventario)
         db.session.flush()
 
@@ -226,7 +249,7 @@ def actualizar_inventario_y_movimientos_por_venta(venta, inventarios, id_tipo_sa
             id_usuario=venta.id_usuario,
             id_tipo_movimiento=id_tipo_salida,
             motivo=f"Venta {venta.comprobante}",
-            cantidad=detalle.cantidad,
+            cantidad=cantidad_base,
             modulo_origen="VENTA",
             id_origen=venta.id_venta,
         )
