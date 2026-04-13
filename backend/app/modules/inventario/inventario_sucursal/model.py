@@ -21,7 +21,7 @@ class InventarioSucursal(db.Model):
     )
 
     sucursal = db.relationship("Sucursal", lazy=True)
-    producto = db.relationship("Producto", lazy=True)
+    producto = db.relationship("Producto", back_populates="inventarios", lazy=True)
 
     def convertir_a_diccionario(self):
         """Devuelve el inventario en formato facil de leer por API."""

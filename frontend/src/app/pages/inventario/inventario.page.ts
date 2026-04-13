@@ -107,6 +107,9 @@ export class InventarioPage implements OnInit {
   readonly usuarioResponsableLabel = computed(
     () => this.usuarioNombre() ?? this.resolveUsuarioNombre() ?? 'Usuario no identificado'
   );
+  readonly productoSeleccionado = computed(() =>
+    this.productos().find(item => item.id_producto === this.selectedProductoId()) ?? null
+  );
   protected readonly faPenToSquare = faPenToSquare;
   protected readonly faToggleOn = faToggleOn;
   protected readonly faToggleOff = faToggleOff;
@@ -238,7 +241,8 @@ export class InventarioPage implements OnInit {
     nombre: ['', [Validators.required, Validators.maxLength(120)]],
     descripcion: [''],
     stock_minimo: [0, [Validators.required, Validators.min(0)]],
-    id_unidad_base: [0, [Validators.required, Validators.min(1)]]
+    id_unidad_base: [0, [Validators.required, Validators.min(1)]],
+    precio_venta_base: [0, [Validators.required, Validators.min(0)]]
   });
 
   readonly productoUnidadForm = this.fb.nonNullable.group({
@@ -538,7 +542,8 @@ export class InventarioPage implements OnInit {
       nombre: producto.nombre,
       descripcion: producto.descripcion ?? '',
       stock_minimo: producto.stock_minimo,
-      id_unidad_base: unidadBaseActual
+      id_unidad_base: unidadBaseActual,
+      precio_venta_base: producto.precio_venta_base ?? 0
     });
   }
 
@@ -561,7 +566,8 @@ export class InventarioPage implements OnInit {
       nombre: value.nombre.trim(),
       descripcion: value.descripcion.trim() || null,
       stock_minimo: Number(value.stock_minimo),
-      activo: productoActual?.activo ?? true
+      activo: productoActual?.activo ?? true,
+      precio_venta_base: Number(value.precio_venta_base)
     };
 
     const esEdicion = Boolean(this.selectedProductoId());
@@ -656,9 +662,10 @@ export class InventarioPage implements OnInit {
     const payload: GuardarProductoDto = {
       codigo: producto.codigo,
       nombre: producto.nombre,
-      descripcion: producto.descripcion,
-      stock_minimo: producto.stock_minimo,
-      activo: nextActivo
+      descripcion: producto.descripcion ?? null,
+      stock_minimo: Number(producto.stock_minimo),
+      activo: nextActivo,
+      precio_venta_base: Number(producto.precio_venta_base ?? 0)
     };
 
     this.inventarioApi.productos
@@ -694,7 +701,8 @@ export class InventarioPage implements OnInit {
       nombre: '',
       descripcion: '',
       stock_minimo: 0,
-      id_unidad_base: this.unidadesMedida()[0]?.id_unidad ?? 0
+      id_unidad_base: this.unidadesMedida()[0]?.id_unidad ?? 0,
+      precio_venta_base: 0
     });
   }
 

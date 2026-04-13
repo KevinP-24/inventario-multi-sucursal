@@ -181,6 +181,12 @@ def registrar_entrada_de_compra_en_inventario(orden, id_usuario_recepcion, id_ti
         )
         inventario.cantidad_actual += detalle.cantidad
         db.session.add(inventario)
+
+        # Actualizar ultimo costo de compra en el producto global
+        if detalle.producto:
+            detalle.producto.ultimo_costo_compra = detalle.precio_unitario
+            db.session.add(detalle.producto)
+
         db.session.flush()
 
         movimiento = MovimientoInventario(

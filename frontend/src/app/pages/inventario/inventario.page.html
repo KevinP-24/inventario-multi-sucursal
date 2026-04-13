@@ -357,20 +357,25 @@
               <tr>
                 <th>Codigo</th>
                 <th>Producto</th>
-                <th>Stock minimo</th>
+                <th>Ult. Compra</th>
+                <th>CPP Global</th>
+                <th>Precio Base</th>
                 <th>Estado</th>
                 <th>Accion</th>
               </tr>
             </thead>
             <tbody>
               @for (producto of productosCatalogoVisible(); track producto.id_producto) {
-                <tr>
+                <tr [class.inventory-table__row--active]="selectedProductoId() === producto.id_producto">
                   <td>{{ producto.codigo }}</td>
                   <td>
                     <strong>{{ producto.nombre }}</strong>
                     <small>{{ producto.descripcion || 'Sin descripcion' }}</small>
+                    <small>Min: {{ producto.stock_minimo | number: '1.0-2' }}</small>
                   </td>
-                  <td>{{ producto.stock_minimo | number: '1.0-2' }}</td>
+                  <td>{{ (producto.ultimo_costo_compra ?? 0) | currency: 'COP':'symbol':'1.0-0' }}</td>
+                  <td>{{ (producto.costo_promedio_global ?? 0) | currency: 'COP':'symbol':'1.0-0' }}</td>
+                  <td>{{ (producto.precio_venta_base ?? 0) | currency: 'COP':'symbol':'1.0-0' }}</td>
                   <td>
                     <span
                       class="status-pill"
@@ -408,7 +413,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="5" class="empty-cell">No hay productos registrados.</td>
+                  <td colspan="7" class="empty-cell">No hay productos registrados.</td>
                 </tr>
               }
             </tbody>
@@ -420,8 +425,16 @@
         <header class="panel__header">
           <div>
             <h2>{{ selectedProductoId() ? 'Editar producto' : 'Nuevo producto' }}</h2>
-            <p>Completa el catalogo base para cerrar la gestion operativa del modulo.</p>
+            <p>
+              {{ selectedProductoId()
+                ? 'Actualiza la informacion base del producto seleccionado.'
+                : 'Completa el catalogo base para cerrar la gestion operativa del modulo.' }}
+            </p>
           </div>
+
+          @if (productoSeleccionado(); as productoEditando) {
+            <span class="panel__meta">Editando: {{ productoEditando.codigo }}</span>
+          }
         </header>
 
         <form class="adjust-form" [formGroup]="productoForm" (ngSubmit)="guardarProducto()">
@@ -444,6 +457,27 @@
             <span class="field__label">Stock minimo</span>
             <input type="number" min="0" step="0.01" formControlName="stock_minimo" />
           </label>
+          <label class="field">
+            <span class="field__label">Precio venta base</span>
+            <input type="number" min="0" step="0.01" formControlName="precio_venta_base" />
+          </label>
+            @if (productoSeleccionado(); as p) {
+              <div class="field-info-group">
+                <div class="field-info">
+                  <span class="field-info__label">Ultimo costo compra</span>
+                  <span class="field-info__value">
+                    {{ (p.ultimo_costo_compra ?? 0) | currency: 'COP':'symbol':'1.0-0' }}
+                  </span>
+                </div>
+
+                <div class="field-info">
+                  <span class="field-info__label">Costo promedio global</span>
+                  <span class="field-info__value">
+                    {{ (p.costo_promedio_global ?? 0) | currency: 'COP':'symbol':'1.0-0' }}
+                  </span>
+                </div>
+              </div>
+            }
 
           @if (!selectedProductoId()) {
             <label class="field">
@@ -470,7 +504,7 @@
               {{ submittingProducto() ? 'Guardando...' : (selectedProductoId() ? 'Actualizar' : 'Crear producto') }}
             </button>
             <button class="btn btn--ghost" type="button" (click)="resetProductoForm()">
-              Limpiar
+              {{ selectedProductoId() ? 'Cancelar edicion' : 'Limpiar' }}
             </button>
           </div>
         </form>
