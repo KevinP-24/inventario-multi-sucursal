@@ -96,19 +96,29 @@
               <label class="field">
                 <span class="field__label">Producto</span>
                 <select formControlName="id_producto">
-                  @for (producto of productosActivos(); track producto.id_producto) {
-                    <option [value]="producto.id_producto">{{ producto.nombre }} ({{ producto.codigo }})</option>
+                  @for (producto of productosDisponiblesVenta(); track producto.id_producto) {
+                    <option [value]="producto.id_producto">
+                      {{ producto.nombre }} ({{ producto.codigo }})
+                    </option>
                   }
                 </select>
+                <small class="field__hint">
+                  Solo se muestran productos con stock disponible y precio activo en la lista seleccionada.
+                </small>
               </label>
 
               <label class="field">
                 <span class="field__label">Unidad</span>
-                <select formControlName="id_producto_unidad">
+                <select formControlName="id_producto_unidad" [disabled]="!unidadesDisponiblesDetalle().length">
                   @for (unidad of unidadesDisponiblesDetalle(); track unidad.id_producto_unidad) {
                     <option [value]="unidad.id_producto_unidad">{{ unidad.label }}</option>
                   }
                 </select>
+                @if (!unidadesDisponiblesDetalle().length) {
+                  <small class="field__hint">
+                    El producto seleccionado no tiene unidades activas disponibles.
+                  </small>
+                }
               </label>
 
               <label class="field">
@@ -326,11 +336,28 @@
                       {{ cliente.activo ? 'Activo' : 'Inactivo' }}
                     </span>
                   </td>
-                  <td>
-                    <div class="form-actions">
-                      <button class="btn btn--ghost" type="button" (click)="editarCliente(cliente)">Editar</button>
-                      <button class="btn" [class.btn--danger]="cliente.activo" [class.btn--ghost]="!cliente.activo" type="button" (click)="toggleEstadoCliente(cliente)">
-                        {{ cliente.activo ? 'Desactivar' : 'Activar' }}
+                  <td class="actions-cell">
+                    <div class="actions-group">
+                      <button
+                        type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar cliente"
+                        aria-label="Editar cliente"
+                        (click)="editarCliente(cliente)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="icon-button"
+                        [class.icon-button--deactivate]="cliente.activo"
+                        [class.icon-button--activate]="!cliente.activo"
+                        [title]="cliente.activo ? 'Desactivar cliente' : 'Activar cliente'"
+                        [attr.aria-label]="cliente.activo ? 'Desactivar cliente' : 'Activar cliente'"
+                        (click)="toggleEstadoCliente(cliente)"
+                      >
+                        <fa-icon [icon]="cliente.activo ? faToggleOn : faToggleOff"></fa-icon>
                       </button>
                     </div>
                   </td>
@@ -424,11 +451,28 @@
                       {{ lista.activa ? 'Activa' : 'Inactiva' }}
                     </span>
                   </td>
-                  <td>
-                    <div class="form-actions">
-                      <button class="btn btn--ghost" type="button" (click)="editarListaPrecio(lista)">Editar</button>
-                      <button class="btn" [class.btn--danger]="lista.activa" [class.btn--ghost]="!lista.activa" type="button" (click)="toggleEstadoListaPrecio(lista)">
-                        {{ lista.activa ? 'Desactivar' : 'Activar' }}
+                  <td class="actions-cell">
+                    <div class="actions-group">
+                      <button
+                        type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar lista"
+                        aria-label="Editar lista"
+                        (click)="editarListaPrecio(lista)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="icon-button"
+                        [class.icon-button--deactivate]="lista.activa"
+                        [class.icon-button--activate]="!lista.activa"
+                        [title]="lista.activa ? 'Desactivar lista' : 'Activar lista'"
+                        [attr.aria-label]="lista.activa ? 'Desactivar lista' : 'Activar lista'"
+                        (click)="toggleEstadoListaPrecio(lista)"
+                      >
+                        <fa-icon [icon]="lista.activa ? faToggleOn : faToggleOff"></fa-icon>
                       </button>
                     </div>
                   </td>
@@ -508,11 +552,28 @@
                       {{ precio.activo ? 'Activo' : 'Inactivo' }}
                     </span>
                   </td>
-                  <td>
-                    <div class="form-actions">
-                      <button class="btn btn--ghost" type="button" (click)="editarPrecioProducto(precio)">Editar</button>
-                      <button class="btn" [class.btn--danger]="precio.activo" [class.btn--ghost]="!precio.activo" type="button" (click)="toggleEstadoPrecioProducto(precio)">
-                        {{ precio.activo ? 'Desactivar' : 'Activar' }}
+                  <td class="actions-cell">
+                    <div class="actions-group">
+                      <button
+                        type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar precio"
+                        aria-label="Editar precio"
+                        (click)="editarPrecioProducto(precio)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="icon-button"
+                        [class.icon-button--deactivate]="precio.activo"
+                        [class.icon-button--activate]="!precio.activo"
+                        [title]="precio.activo ? 'Desactivar precio' : 'Activar precio'"
+                        [attr.aria-label]="precio.activo ? 'Desactivar precio' : 'Activar precio'"
+                        (click)="toggleEstadoPrecioProducto(precio)"
+                      >
+                        <fa-icon [icon]="precio.activo ? faToggleOn : faToggleOff"></fa-icon>
                       </button>
                     </div>
                   </td>
@@ -543,6 +604,9 @@
                 <option [value]="producto.id_producto">{{ producto.nombre }}</option>
               }
             </select>
+            <small class="field__hint">
+              Selecciona cualquier producto activo para asignarle un precio en la lista.
+            </small>
           </label>
 
           <label class="field">

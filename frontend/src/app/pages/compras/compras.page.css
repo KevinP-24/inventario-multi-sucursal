@@ -428,6 +428,58 @@
   color: var(--ms-green-500, #2f9655);
 }
 
+/* Tooltip para hints dentro del detail-builder */
+.detail-builder .field {
+  position: relative;
+}
+
+.detail-builder .field__hint {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 10;
+  width: 220px;
+  padding: 8px 12px;
+  background: var(--ms-ink-700, #4b5a68);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.detail-builder .field:hover .field__hint {
+  display: block;
+}
+
+/* Tooltip para hints dentro del panel de filtros */
+.panel--filters .field {
+  position: relative;
+}
+
+.panel--filters .field__hint {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 10;
+  width: 220px;
+  padding: 8px 12px;
+  background: var(--ms-ink-700, #4b5a68);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.panel--filters .field:hover .field__hint {
+  display: block;
+}
+
 @media (max-width: 1200px) {
   .filters-form {
     grid-template-columns: repeat(3, minmax(0, 1fr));
