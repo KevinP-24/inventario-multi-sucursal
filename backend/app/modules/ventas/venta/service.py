@@ -189,11 +189,13 @@ def preparar_detalles_de_venta(datos):
             continue
 
         subtotal_bruto = cantidad * precio_unitario_aplicado
-        if descuento > subtotal_bruto:
+        descuento_total_detalle = descuento
+
+        if descuento_total_detalle > subtotal_bruto:
             errores[f"{prefijo}_descuento"] = "El descuento no puede superar el subtotal."
             continue
 
-        subtotal = subtotal_bruto - descuento
+        subtotal = subtotal_bruto - descuento_total_detalle
         detalle = DetalleVenta(
             id_producto=id_producto,
             id_producto_unidad=id_producto_unidad,
@@ -205,7 +207,7 @@ def preparar_detalles_de_venta(datos):
 
         detalles.append(detalle)
         inventarios[id_producto] = inventario
-        descuento_total += descuento
+        descuento_total += descuento_total_detalle
         total += subtotal
 
     if errores:

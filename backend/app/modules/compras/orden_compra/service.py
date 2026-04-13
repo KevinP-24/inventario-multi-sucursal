@@ -164,7 +164,7 @@ def registrar_entrada_de_compra_en_inventario(orden, id_usuario_recepcion, id_ti
             detalle.producto_unidad.factor_conversion
         )
         cantidad_base = detalle.cantidad * factor_conversion
-        costo_unitario_base = detalle.precio_unitario / factor_conversion
+        costo_unitario_base = detalle.subtotal / cantidad_base
 
         inventario = consultar_inventario_por_sucursal_y_producto_en_bd(
             orden.id_sucursal,
@@ -269,21 +269,35 @@ def construir_detalles_y_totales(detalles_recibidos):
         cantidad = convertir_valor_a_decimal(detalle_recibido["cantidad"])
         precio_unitario = convertir_valor_a_decimal(detalle_recibido["precio_unitario"])
         descuento = convertir_valor_a_decimal(detalle_recibido.get("descuento", 0))
+
+        producto_unidad = consultar_producto_unidad_por_id_en_bd(
+            detalle_recibido["id_producto_unidad"]
+        )
+        factor_conversion = convertir_valor_a_decimal(producto_unidad.factor_conversion)
+
+        # cantidad en unidad base
+        cantidad_base = cantidad * factor_conversion
+
+        # precio total bruto de la linea (precio_unitario viene en la unidad seleccionada)
         subtotal_bruto = cantidad * precio_unitario
-        subtotal_detalle = subtotal_bruto - descuento
+
+        # descuento por unidad base -> descuento total de la linea
+        descuento_total_detalle = descuento * cantidad_base
+
+        subtotal_detalle = subtotal_bruto - descuento_total_detalle
 
         detalle = DetalleOrdenCompra(
             id_producto=detalle_recibido["id_producto"],
             id_producto_unidad=detalle_recibido["id_producto_unidad"],
             cantidad=cantidad,
             precio_unitario=precio_unitario,
-            descuento=descuento,
+            descuento=descuento,   # se guarda el descuento unitario
             subtotal=subtotal_detalle,
         )
 
         detalles.append(detalle)
         subtotal_orden += subtotal_bruto
-        descuento_total += descuento
+        descuento_total += descuento_total_detalle
         total_orden += subtotal_detalle
 
     return detalles, subtotal_orden, descuento_total, total_orden
