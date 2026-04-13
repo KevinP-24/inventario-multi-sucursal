@@ -1,0 +1,646 @@
+<section class="inventario-page">
+  <app-page-header
+    eyebrow="Inventario"
+    title="Operacion de inventario"
+    description="Consulta existencias por sucursal, revisa alertas de stock bajo y gestiona productos, unidades y movimientos."
+  />
+
+  <nav class="inventario-tabs" aria-label="Secciones de inventario">
+    <button
+      type="button"
+      class="tab-button"
+      [class.tab-button--active]="activeSection() === 'operacion'"
+      (click)="seleccionarSeccion('operacion')"
+    >
+      Operacion
+    </button>
+    <button
+      type="button"
+      class="tab-button"
+      [class.tab-button--active]="activeSection() === 'productos'"
+      (click)="seleccionarSeccion('productos')"
+    >
+      Productos
+    </button>
+    <button
+      type="button"
+      class="tab-button"
+      [class.tab-button--active]="activeSection() === 'unidades'"
+      (click)="seleccionarSeccion('unidades')"
+    >
+      Unidades
+    </button>
+  </nav>
+
+  @if (errorMessage()) {
+    <div class="feedback feedback--error">{{ errorMessage() }}</div>
+  }
+
+  @if (successMessage()) {
+    <div class="feedback feedback--success">{{ successMessage() }}</div>
+  }
+
+  @if (activeSection() === 'operacion') {
+    <section class="inventario-kpis">
+      <article class="kpi-card">
+        <span class="kpi-card__label">Referencias visibles</span>
+        <strong class="kpi-card__value">{{ totalReferencias() }}</strong>
+      </article>
+
+      <article class="kpi-card">
+        <span class="kpi-card__label">Unidades visibles</span>
+        <strong class="kpi-card__value">{{ totalUnidades() | number: '1.0-2' }}</strong>
+      </article>
+
+      <article class="kpi-card" [class.kpi-card--danger]="totalBajoStock() > 0">
+        <span class="kpi-card__label">Bajo stock</span>
+        <strong class="kpi-card__value">{{ totalBajoStock() }}</strong>
+      </article>
+    </section>
+
+    <section class="panel panel--filters">
+      <form class="filters-form" [formGroup]="filtroForm" (ngSubmit)="aplicarFiltros()">
+        <label class="field">
+          <span class="field__label">Sucursal</span>
+          <select formControlName="id_sucursal">
+            <option [value]="0">Todas</option>
+            @for (sucursal of sucursalesDisponibles(); track sucursal.id_sucursal) {
+              <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field field--grow">
+          <span class="field__label">Buscar producto</span>
+          <input formControlName="busqueda" type="text" placeholder="Nombre o codigo" />
+        </label>
+
+        <label class="checkbox-field">
+          <input formControlName="solo_bajo_stock" type="checkbox" />
+          <span>Solo bajo stock</span>
+        </label>
+
+        <button class="btn btn--primary" type="submit">Aplicar</button>
+        <button class="btn btn--ghost" type="button" (click)="cargarVista()">Recargar</button>
+      </form>
+    </section>
+
+    <section class="inventario-layout">
+      <article class="panel panel--table">
+        <header class="panel__header">
+          <div>
+            <h2>Inventario por sucursal</h2>
+            <p>Vista operativa del stock disponible y los productos que requieren atencion.</p>
+          </div>
+          @if (loading()) {
+            <span class="panel__meta">Cargando...</span>
+          }
+        </header>
+
+        <div class="table-shell">
+          <table class="inventory-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Sucursal</th>
+                <th>Stock</th>
+                <th>Minimo</th>
+                <th>Estado</th>
+                <th>Costo promedio</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of inventarioVisible(); track item.id_inventario) {
+                <tr
+                  (click)="seleccionarInventario(item.id_inventario)"
+                  [class.inventory-table__row--active]="selectedInventarioId() === item.id_inventario"
+                >
+                  <td>
+                    <strong>{{ item.producto }}</strong>
+                    <small>{{ item.codigo_producto }}</small>
+                  </td>
+                  <td>Sucursal {{ item.id_sucursal }}</td>
+                  <td>{{ item.cantidad_actual | number: '1.0-2' }}</td>
+                  <td>{{ item.stock_minimo | number: '1.0-2' }}</td>
+                  <td>
+                    <span
+                      class="status-pill"
+                      [class.status-pill--danger]="item.bajo_stock"
+                      [class.status-pill--ok]="!item.bajo_stock"
+                    >
+                      {{ item.bajo_stock ? 'Bajo stock' : 'Estable' }}
+                    </span>
+                  </td>
+                  <td>{{ item.costo_promedio | currency: 'COP':'symbol':'1.0-0' }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-cell">No hay registros para el filtro aplicado.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <aside class="inventario-side">
+        <article class="panel">
+          <header class="panel__header">
+            <div>
+              <h2>Producto seleccionado</h2>
+              <p>Registro operativo sobre la existencia actual.</p>
+            </div>
+          </header>
+
+          @if (inventarioSeleccionado(); as selected) {
+            <div class="selected-card">
+              <h3>{{ selected.producto }}</h3>
+              <span>{{ selected.codigo_producto }}</span>
+
+              <dl class="selected-card__stats">
+                <div>
+                  <dt>Sucursal</dt>
+                  <dd>{{ selected.id_sucursal }}</dd>
+                </div>
+                <div>
+                  <dt>Stock actual</dt>
+                  <dd>{{ selected.cantidad_actual | number: '1.0-2' }}</dd>
+                </div>
+                <div>
+                  <dt>Stock minimo</dt>
+                  <dd>{{ selected.stock_minimo | number: '1.0-2' }}</dd>
+                </div>
+                <div>
+                  <dt>Costo promedio</dt>
+                  <dd>{{ selected.costo_promedio | currency: 'COP':'symbol':'1.0-0' }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <form class="adjust-form" [formGroup]="movimientoForm" (ngSubmit)="registrarMovimiento()">
+              <label class="field">
+                <span class="field__label">Usuario responsable</span>
+                <input
+                  type="text"
+                  [value]="usuarioResponsableLabel()"
+                  readonly
+                />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Naturaleza operativa</span>
+                <select formControlName="tipo_operacion">
+                  <option value="AJUSTE">Ajuste</option>
+                  <option value="DEVOLUCION">Devolucion</option>
+                  <option value="MERMA">Merma</option>
+                </select>
+              </label>
+
+              @if (movimientoForm.controls.tipo_operacion.value === 'AJUSTE') {
+                <label class="field">
+                  <span class="field__label">Tipo de ajuste</span>
+                  <select formControlName="tipo_ajuste">
+                    <option value="ENTRADA">Entrada</option>
+                    <option value="SALIDA">Salida</option>
+                    <option value="AJUSTE">Ajuste directo</option>
+                  </select>
+                </label>
+              }
+
+              @if (
+                movimientoForm.controls.tipo_operacion.value !== 'AJUSTE' ||
+                movimientoForm.controls.tipo_ajuste.value !== 'AJUSTE'
+              ) {
+                <label class="field">
+                  <span class="field__label">Cantidad</span>
+                  <input type="number" min="0.01" step="0.01" formControlName="cantidad" />
+                </label>
+              }
+
+              @if (
+                movimientoForm.controls.tipo_operacion.value === 'AJUSTE' &&
+                movimientoForm.controls.tipo_ajuste.value === 'AJUSTE'
+              ) {
+                <label class="field">
+                  <span class="field__label">Nuevo stock actual</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    formControlName="cantidad_actual_nueva"
+                  />
+                </label>
+              }
+
+              @if (movimientoForm.controls.tipo_operacion.value !== 'AJUSTE') {
+                <label class="field">
+                  <span class="field__label">Id origen</span>
+                  <input type="number" min="1" formControlName="id_origen" />
+                </label>
+              }
+
+              <label class="field">
+                <span class="field__label">Motivo</span>
+                <input type="text" formControlName="motivo" placeholder="Describe el movimiento" />
+              </label>
+
+              <button class="btn btn--primary btn--full" type="submit" [disabled]="submitting()">
+                {{ submitting() ? 'Guardando...' : 'Registrar movimiento' }}
+              </button>
+            </form>
+          } @else {
+            <p class="panel__empty">Selecciona un registro del inventario para operar.</p>
+          }
+        </article>
+
+        <article class="panel">
+          <header class="panel__header">
+            <div>
+              <h2>Alertas</h2>
+              <p>Productos por debajo del minimo configurado.</p>
+            </div>
+          </header>
+
+          <div class="alerts-list">
+            @for (alerta of alertas(); track alerta.id_inventario) {
+              <article class="alert-card">
+                <strong>{{ alerta.producto || ('Producto #' + alerta.id_producto) }}</strong>
+                <span>Sucursal {{ alerta.id_sucursal }}</span>
+                <small>
+                  Actual: {{ alerta.cantidad_actual | number: '1.0-2' }} -
+                  Minimo: {{ alerta.stock_minimo | number: '1.0-2' }}
+                </small>
+              </article>
+            } @empty {
+              <p class="panel__empty">No hay alertas activas para el filtro actual.</p>
+            }
+          </div>
+        </article>
+
+        <article class="panel">
+          <header class="panel__header">
+            <div>
+              <h2>Historial de movimientos</h2>
+              <p>Trazabilidad del inventario seleccionado.</p>
+            </div>
+            @if (loadingMovimientos()) {
+              <span class="panel__meta">Cargando...</span>
+            }
+          </header>
+
+          <div class="timeline">
+            @for (mov of movimientos(); track mov.id_movimiento) {
+              <article class="timeline__item">
+                <div class="timeline__bullet"></div>
+                <div class="timeline__content">
+                  <strong>{{ mov.tipo_movimiento || 'Movimiento inventario' }}</strong>
+                  <small>
+                    Responsable: #{{ mov.id_usuario }} -
+                    Motivo: {{ mov.motivo || 'Sin motivo registrado' }}
+                  </small>
+                  <small>
+                    Origen: {{ mov.modulo_origen || 'MANUAL' }} -
+                    Cantidad: {{ mov.cantidad | number: '1.0-2' }}
+                  </small>
+                  <span>{{ mov.fecha_hora || 'Sin fecha' }}</span>
+                </div>
+              </article>
+            } @empty {
+              <p class="panel__empty">Este inventario aun no tiene movimientos visibles.</p>
+            }
+          </div>
+        </article>
+      </aside>
+    </section>
+  }
+
+  @if (activeSection() === 'productos') {
+    <section class="catalog-layout">
+      <article class="panel panel--table">
+        <header class="panel__header">
+          <div>
+            <h2>Catalogo de productos</h2>
+            <p>Gestiona el registro base que alimenta el inventario de todas las sucursales.</p>
+          </div>
+          @if (loading()) {
+            <span class="panel__meta">Cargando...</span>
+          }
+        </header>
+
+        <div class="catalog-toolbar">
+          <label class="field field--grow">
+            <span class="field__label">Buscar producto</span>
+            <input
+              type="text"
+              [value]="productoSearchTerm()"
+              (input)="setProductoSearchTerm($any($event.target).value)"
+              placeholder="Codigo o nombre"
+            />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Estado</span>
+            <select
+              [value]="productoStatusFilter()"
+              (change)="setProductoStatusFilter($any($event.target).value)"
+            >
+              <option value="TODOS">Todos</option>
+              <option value="ACTIVOS">Activos</option>
+              <option value="INACTIVOS">Inactivos</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="table-shell">
+          <table class="inventory-table">
+            <thead>
+              <tr>
+                <th>Codigo</th>
+                <th>Producto</th>
+                <th>Ult. Compra</th>
+                <th>CPP Global</th>
+                <th>Precio Base</th>
+                <th>Estado</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (producto of productosCatalogoVisible(); track producto.id_producto) {
+                <tr [class.inventory-table__row--active]="selectedProductoId() === producto.id_producto">
+                  <td>{{ producto.codigo }}</td>
+                  <td>
+                    <strong>{{ producto.nombre }}</strong>
+                    <small>{{ producto.descripcion || 'Sin descripcion' }}</small>
+                    <small>Min: {{ producto.stock_minimo | number: '1.0-2' }}</small>
+                  </td>
+                  <td>{{ (producto.ultimo_costo_compra ?? 0) | currency: 'COP':'symbol':'1.0-0' }}</td>
+                  <td>{{ (producto.costo_promedio_global ?? 0) | currency: 'COP':'symbol':'1.0-0' }}</td>
+                  <td>{{ (producto.precio_venta_base ?? 0) | currency: 'COP':'symbol':'1.0-0' }}</td>
+                  <td>
+                    <span
+                      class="status-pill"
+                      [class.status-pill--ok]="producto.activo"
+                      [class.status-pill--danger]="!producto.activo"
+                    >
+                      {{ producto.activo ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </td>
+                  <td class="actions-cell">
+                    <div class="actions-group">
+                      <button
+                        type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar producto"
+                        aria-label="Editar producto"
+                        (click)="editarProducto(producto)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="icon-button"
+                        [class.icon-button--deactivate]="producto.activo"
+                        [class.icon-button--activate]="!producto.activo"
+                        [title]="producto.activo ? 'Desactivar producto' : 'Activar producto'"
+                        [attr.aria-label]="producto.activo ? 'Desactivar producto' : 'Activar producto'"
+                        (click)="toggleEstadoProducto(producto)"
+                      >
+                        <fa-icon [icon]="producto.activo ? faToggleOn : faToggleOff"></fa-icon>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="7" class="empty-cell">No hay productos registrados.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>{{ selectedProductoId() ? 'Editar producto' : 'Nuevo producto' }}</h2>
+            <p>
+              {{ selectedProductoId()
+                ? 'Actualiza la informacion base del producto seleccionado.'
+                : 'Completa el catalogo base para cerrar la gestion operativa del modulo.' }}
+            </p>
+          </div>
+
+          @if (productoSeleccionado(); as productoEditando) {
+            <span class="panel__meta">Editando: {{ productoEditando.codigo }}</span>
+          }
+        </header>
+
+        <form class="adjust-form" [formGroup]="productoForm" (ngSubmit)="guardarProducto()">
+          <label class="field">
+            <span class="field__label">Codigo</span>
+            <input type="text" formControlName="codigo" placeholder="Ej. PRD-001" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Nombre</span>
+            <input type="text" formControlName="nombre" placeholder="Nombre del producto" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Descripcion</span>
+            <input type="text" formControlName="descripcion" placeholder="Descripcion operativa" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Stock minimo</span>
+            <input type="number" min="0" step="0.01" formControlName="stock_minimo" />
+          </label>
+          <label class="field">
+            <span class="field__label">Precio venta base</span>
+            <input type="number" min="0" step="0.01" formControlName="precio_venta_base" />
+          </label>
+            @if (productoSeleccionado(); as p) {
+              <div class="field-info-group">
+                <div class="field-info">
+                  <span class="field-info__label">Ultimo costo compra</span>
+                  <span class="field-info__value">
+                    {{ (p.ultimo_costo_compra ?? 0) | currency: 'COP':'symbol':'1.0-0' }}
+                  </span>
+                </div>
+
+                <div class="field-info">
+                  <span class="field-info__label">Costo promedio global</span>
+                  <span class="field-info__value">
+                    {{ (p.costo_promedio_global ?? 0) | currency: 'COP':'symbol':'1.0-0' }}
+                  </span>
+                </div>
+              </div>
+            }
+
+          @if (!selectedProductoId()) {
+            <label class="field">
+              <span class="field__label">Unidad base inicial</span>
+              <select formControlName="id_unidad_base">
+                <option [value]="0">Selecciona una unidad</option>
+                @for (unidad of unidadesMedida(); track unidad.id_unidad) {
+                  <option [value]="unidad.id_unidad">
+                    {{ unidad.nombre }} ({{ unidad.simbolo }})
+                  </option>
+                }
+              </select>
+            </label>
+          }
+
+          @if (selectedProductoId()) {
+            <p class="panel__meta">
+              La unidad base y las conversiones se gestionan desde la pestaña Unidades.
+            </p>
+          }
+
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit" [disabled]="submittingProducto()">
+              {{ submittingProducto() ? 'Guardando...' : (selectedProductoId() ? 'Actualizar' : 'Crear producto') }}
+            </button>
+            <button class="btn btn--ghost" type="button" (click)="resetProductoForm()">
+              {{ selectedProductoId() ? 'Cancelar edicion' : 'Limpiar' }}
+            </button>
+          </div>
+        </form>
+      </article>
+    </section>
+  }
+
+  @if (activeSection() === 'unidades') {
+    <section class="catalog-layout">
+      <article class="panel panel--table">
+        <header class="panel__header">
+          <div>
+            <h2>Unidades por producto</h2>
+            <p>Asocia unidades de medida y define conversiones para venta, compra y control.</p>
+          </div>
+          @if (loading()) {
+            <span class="panel__meta">Cargando...</span>
+          }
+        </header>
+
+        <div class="table-shell">
+          <table class="inventory-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Unidad</th>
+                <th>Conversion</th>
+                <th>Base</th>
+                <th>Estado</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of productoUnidadesVm(); track item.id_producto_unidad) {
+                <tr>
+                  <td>
+                    <strong>{{ item.producto }}</strong>
+                    <small>{{ item.codigo_producto }}</small>
+                  </td>
+                  <td>{{ item.unidad }} ({{ item.simbolo }})</td>
+                  <td>{{ item.factor_conversion | number: '1.0-4' }}</td>
+                  <td>{{ item.es_base ? 'Si' : 'No' }}</td>
+                  <td>
+                    <span
+                      class="status-pill"
+                      [class.status-pill--ok]="item.activo"
+                      [class.status-pill--danger]="!item.activo"
+                    >
+                      {{ item.activo ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </td>
+                  <td class="actions-cell">
+                    <div class="actions-group">
+                      <button
+                        type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar unidad"
+                        aria-label="Editar unidad"
+                        (click)="editarProductoUnidad(item)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="icon-button"
+                        [class.icon-button--deactivate]="item.activo"
+                        [class.icon-button--activate]="!item.activo"
+                        [title]="item.activo ? 'Desactivar unidad' : 'Activar unidad'"
+                        [attr.aria-label]="item.activo ? 'Desactivar unidad' : 'Activar unidad'"
+                        (click)="eliminarProductoUnidad(item)"
+                      >
+                        <fa-icon [icon]="item.activo ? faToggleOn : faToggleOff"></fa-icon>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-cell">No hay unidades configuradas para productos.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>{{ selectedProductoUnidadId() ? 'Editar unidad del producto' : 'Nueva unidad del producto' }}</h2>
+            <p>Gestiona equivalencias sin salir del modulo de inventario.</p>
+          </div>
+        </header>
+
+        <form class="adjust-form" [formGroup]="productoUnidadForm" (ngSubmit)="guardarProductoUnidad()">
+          <label class="field">
+            <span class="field__label">Producto</span>
+            <select formControlName="id_producto">
+              @for (producto of productosParaUnidades(); track producto.id_producto) {
+                <option [value]="producto.id_producto">
+                  {{ producto.nombre }} ({{ producto.codigo }}){{ producto.activo ? '' : ' - Inactivo' }}
+                </option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Unidad de medida</span>
+            <select formControlName="id_unidad">
+              @for (unidad of unidadesMedida(); track unidad.id_unidad) {
+                <option [value]="unidad.id_unidad">{{ unidad.nombre }} ({{ unidad.simbolo }})</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Factor de conversion</span>
+            <input type="number" min="0.0001" step="0.0001" formControlName="factor_conversion" />
+          </label>
+
+          <label class="checkbox-field">
+            <input type="checkbox" formControlName="es_base" />
+            <span>Es unidad base del producto</span>
+          </label>
+
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit" [disabled]="submittingUnidad()">
+              {{ submittingUnidad() ? 'Guardando...' : (selectedProductoUnidadId() ? 'Actualizar unidad' : 'Registrar unidad') }}
+            </button>
+            <button class="btn btn--ghost" type="button" (click)="resetProductoUnidadForm()">
+              Limpiar
+            </button>
+          </div>
+        </form>
+      </article>
+    </section>
+  }
+</section>

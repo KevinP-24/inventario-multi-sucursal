@@ -1,0 +1,31 @@
+.not-found {
+  display: grid;
+  gap: 14px;
+  place-items: start;
+  min-height: 100vh;
+  padding: 48px 24px;
+  background: linear-gradient(135deg, #eef3f0 0%, #f8f5ef 100%);
+}
+
+.not-found p,
+.not-found h1,
+.not-found a {
+  margin: 0;
+}
+
+.not-found p {
+  color: var(--color-accent);
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.not-found h1 {
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 0.95;
+}
+
+.not-found a {
+  color: var(--color-surface-strong);
+  font-weight: 700;
+}

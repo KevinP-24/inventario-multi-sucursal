@@ -1,0 +1,297 @@
+<section class="dashboard-page">
+  <app-page-header
+    [eyebrow]="content().eyebrow"
+    [title]="content().title"
+    [description]="content().description"
+  />
+
+  @if (errorMessage()) {
+    <p class="dashboard-feedback dashboard-feedback--error">{{ errorMessage() }}</p>
+  }
+
+  @if (loading()) {
+    <article class="dashboard-panel dashboard-panel--loading">
+      <p>Cargando indicadores y visualizaciones del dashboard...</p>
+    </article>
+  } @else if (!hasData()) {
+    <article class="dashboard-panel dashboard-panel--loading">
+      <h2>Sin datos suficientes</h2>
+      <p>Cuando existan ventas, inventario y transferencias reales, aqui veras el comportamiento consolidado del sistema.</p>
+    </article>
+  } @else {
+    <article class="dashboard-panel dashboard-panel--filters">
+      <div class="dashboard-panel__header">
+        <div>
+          <p class="dashboard-panel__eyebrow">Filtros</p>
+          <h2>Contexto de analisis</h2>
+        </div>
+        <span class="context-badge">{{ selectedSucursalName() }}</span>
+      </div>
+
+      <form class="dashboard-filters" [formGroup]="filterForm">
+        <label class="dashboard-field">
+          <span>Sucursal</span>
+          <select formControlName="id_sucursal" [disabled]="fixedSucursalId() !== null">
+            <option [value]="0">Toda la red</option>
+            @for (sucursal of sucursales(); track sucursal.id_sucursal) {
+              <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="dashboard-field">
+          <span>Ventana</span>
+          <select formControlName="ventana_meses">
+            <option [value]="4">Ultimos 4 meses</option>
+            <option [value]="6">Ultimos 6 meses</option>
+            <option [value]="12">Ultimos 12 meses</option>
+          </select>
+        </label>
+      </form>
+    </article>
+
+    <section class="dashboard-kpis" aria-label="KPIs principales">
+      <article class="kpi-card">
+        <span>Ventas del mes</span>
+        <strong>{{ currentMonthSales() | currency:'COP':'symbol':'1.0-0' }}</strong>
+        <small>{{ formatDelta(currentMonthDelta()) }}</small>
+      </article>
+      <article class="kpi-card">
+        <span>Rotacion estimada</span>
+        <strong>{{ inventoryTurnover() | number:'1.2-2' }}</strong>
+        <small>{{ totalStock() | number:'1.0-0' }} unidades en stock filtrado</small>
+      </article>
+      <article class="kpi-card">
+        <span>Transferencias activas</span>
+        <strong>{{ activeTransferCount() }}</strong>
+        <small>Operaciones vivas en seguimiento</small>
+      </article>
+      <article class="kpi-card">
+        <span>Productos criticos</span>
+        <strong>{{ criticalProductsCount() }}</strong>
+        <small>{{ replenishmentAlerts().length }} alertas entre criticos y proximos</small>
+      </article>
+    </section>
+
+    <section class="dashboard-visual-grid">
+      <article class="dashboard-panel chart-panel chart-panel--wide">
+        <div class="dashboard-panel__header">
+          <div>
+            <p class="dashboard-panel__eyebrow">RF38</p>
+            <h2>Ventas del periodo</h2>
+          </div>
+          <span class="panel-tag">Mes actual vs anteriores</span>
+        </div>
+        <div class="chart-container">
+          <canvas #salesChart></canvas>
+        </div>
+      </article>
+
+      <article class="dashboard-panel chart-panel">
+        <div class="dashboard-panel__header">
+          <div>
+            <p class="dashboard-panel__eyebrow">RF40</p>
+            <h2>Estado de transferencias</h2>
+          </div>
+          <span class="panel-tag">Impacto operativo</span>
+        </div>
+        <div class="chart-container chart-container--compact">
+          <canvas #transferChart></canvas>
+        </div>
+      </article>
+    </section>
+
+    <section class="dashboard-visual-grid">
+      <article class="dashboard-panel chart-panel chart-panel--wide">
+        <div class="dashboard-panel__header">
+          <div>
+            <p class="dashboard-panel__eyebrow">RF39</p>
+            <h2>Productos de alta demanda</h2>
+          </div>
+          <span class="panel-tag">Salida por producto</span>
+        </div>
+        <div class="chart-container">
+          <canvas #demandChart></canvas>
+        </div>
+      </article>
+
+      <article class="dashboard-panel">
+        <div class="dashboard-panel__header">
+          <div>
+            <p class="dashboard-panel__eyebrow">Baja demanda</p>
+            <h2>Productos con menor salida</h2>
+          </div>
+        </div>
+
+        <div class="insight-list">
+          @for (item of lowDemandProducts(); track item.id_producto) {
+            <article class="insight-item">
+              <strong>{{ item.nombre }}</strong>
+              <span>{{ item.cantidad | number:'1.0-0' }} unidades en el periodo</span>
+            </article>
+          } @empty {
+            <article class="insight-item">
+              <strong>Sin datos</strong>
+              <span>Aun no hay ventas suficientes para calcular baja demanda.</span>
+            </article>
+          }
+        </div>
+      </article>
+    </section>
+
+    <section class="dashboard-visual-grid">
+      <article class="dashboard-panel chart-panel chart-panel--wide">
+        <div class="dashboard-panel__header">
+          <div>
+            <p class="dashboard-panel__eyebrow">RF40</p>
+            <h2>Transferencias activas y su impacto</h2>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Transferencia</th>
+                <th>Origen</th>
+                <th>Destino</th>
+                <th>Estado</th>
+                <th>Cantidad</th>
+                <th>Impacto</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of activeTransfers(); track item.id_transferencia) {
+                <tr>
+                  <td>#{{ item.id_transferencia }}</td>
+                  <td>{{ item.origen }}</td>
+                  <td>{{ item.destino }}</td>
+                  <td>{{ item.estado }}</td>
+                  <td>{{ item.cantidad | number:'1.0-0' }}</td>
+                  <td>{{ item.impacto }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-cell">No hay transferencias activas en el contexto actual.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="dashboard-panel">
+        <div class="dashboard-panel__header">
+          <div>
+            <p class="dashboard-panel__eyebrow">RF41</p>
+            <h2>Reabastecimiento</h2>
+          </div>
+        </div>
+
+        <div class="insight-list">
+          @for (item of replenishmentAlerts(); track item.id_inventario) {
+            <article class="insight-item">
+              <div class="insight-item__top">
+                <strong>{{ item.producto }}</strong>
+                <span class="severity-pill" [class.is-critical]="item.severidad === 'critico'">
+                  {{ getSeverityLabel(item.severidad) }}
+                </span>
+              </div>
+              <span>{{ item.sucursal }}</span>
+              <span>Actual {{ item.cantidad_actual | number:'1.0-0' }} / Min {{ item.stock_minimo | number:'1.0-0' }}</span>
+            </article>
+          } @empty {
+            <article class="insight-item">
+              <strong>Sin alertas</strong>
+              <span>No hay productos criticos o proximos al minimo en el filtro actual.</span>
+            </article>
+          }
+        </div>
+      </article>
+    </section>
+
+    @if (canCompareBranches()) {
+      <section class="dashboard-visual-grid">
+        <article class="dashboard-panel chart-panel chart-panel--wide">
+          <div class="dashboard-panel__header">
+            <div>
+              <p class="dashboard-panel__eyebrow">RF42</p>
+              <h2>Comparacion entre sucursales</h2>
+            </div>
+            <span class="panel-tag">Perfiles administrativos</span>
+          </div>
+          <div class="chart-container">
+            <canvas #branchChart></canvas>
+          </div>
+        </article>
+
+        <article class="dashboard-panel">
+          <div class="dashboard-panel__header">
+            <div>
+              <p class="dashboard-panel__eyebrow">Comparativo</p>
+              <h2>Resumen de rendimiento</h2>
+            </div>
+          </div>
+
+          <div class="insight-list">
+            @for (item of branchComparison(); track item.id_sucursal) {
+              <article class="insight-item">
+                <strong>{{ item.nombre }}</strong>
+                <span>Ventas {{ item.ventas_total | currency:'COP':'symbol':'1.0-0' }}</span>
+                <span>Criticos {{ item.productos_criticos }} • Transferencias {{ item.transferencias_activas }}</span>
+              </article>
+            } @empty {
+              <article class="insight-item">
+                <strong>Sin comparativa disponible</strong>
+                <span>No hay sucursales suficientes con datos para comparar.</span>
+              </article>
+            }
+          </div>
+        </article>
+      </section>
+    }
+
+    <section class="dashboard-shortcuts" aria-label="Accesos rapidos y enfoque">
+      <article class="dashboard-panel">
+        <div class="dashboard-panel__header">
+          <div>
+            <p class="dashboard-panel__eyebrow">Atajos</p>
+            <h2>Modulos relacionados</h2>
+          </div>
+        </div>
+
+        <div class="shortcut-list">
+          @for (shortcut of shortcuts(); track shortcut.path) {
+            <a class="shortcut-item" [routerLink]="shortcut.path">
+              <strong>{{ shortcut.label }}</strong>
+              <span>{{ shortcut.description }}</span>
+            </a>
+          } @empty {
+            <article class="insight-item">
+              <strong>Sin accesos adicionales</strong>
+              <span>Este perfil no tiene otros modulos operativos configurados.</span>
+            </article>
+          }
+        </div>
+      </article>
+
+      <article class="dashboard-panel">
+        <div class="dashboard-panel__header">
+          <div>
+            <p class="dashboard-panel__eyebrow">Enfoque del rol</p>
+            <h2>Lectura recomendada</h2>
+          </div>
+        </div>
+
+        <div class="insight-list">
+          @for (item of content().focus; track item.title) {
+            <article class="insight-item">
+              <strong>{{ item.title }}</strong>
+              <span>{{ item.description }}</span>
+            </article>
+          }
+        </div>
+      </article>
+    </section>
+  }
+</section>

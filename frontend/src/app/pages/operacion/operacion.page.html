@@ -1,0 +1,144 @@
+<section class="operacion-page">
+  <app-page-header
+    [eyebrow]="operationExperience().eyebrow"
+    [title]="pageTitle()"
+    [description]="operationExperience().description"
+  />
+
+  @if (isLoading()) {
+    <section class="state-card">
+      <p>Cargando indicadores operativos...</p>
+    </section>
+  } @else if (loadError()) {
+    <section class="state-card state-card--error">
+      <p>{{ loadError() }}</p>
+    </section>
+  } @else {
+    <section class="metrics-grid" aria-label="Resumen operativo">
+      <article class="metric-card metric-card--accent">
+        <span>Vista activa</span>
+        <strong>{{ roleName() }}</strong>
+        <p>La pagina adapta su enfoque y prioridades segun el usuario autenticado.</p>
+      </article>
+
+      <article class="metric-card">
+        <span>Alertas de stock</span>
+        <strong>{{ restockAlerts().length }}</strong>
+        <p>Productos agotados, bajo minimo o proximos a agotarse.</p>
+      </article>
+
+      <article class="metric-card">
+        <span>Transferencias activas</span>
+        <strong>{{ activeTransfers().length }}</strong>
+        <p>Movimientos internos con impacto operativo pendiente.</p>
+      </article>
+
+      <article class="metric-card">
+        <span>Mayor demanda</span>
+        <strong>{{ demandSummary()?.productos_alta_demanda?.length ?? 0 }}</strong>
+        <p>Referencias prioritarias para surtido y seguimiento.</p>
+      </article>
+    </section>
+
+    <section class="operacion-grid">
+      <article class="panel-card">
+        <div class="panel-card__header">
+          <h2>Reabastecimiento</h2>
+          <p>Lo que requiere accion primero en inventario.</p>
+        </div>
+
+        @if (restockAlerts().length) {
+          <div class="stack-list">
+            @for (alert of restockAlerts(); track alert.id_producto) {
+              <article class="stack-item">
+                <div>
+                  <strong>{{ alert.producto }}</strong>
+                  <small>{{ alert.codigo_producto }} · {{ alert.estado_reabastecimiento }}</small>
+                </div>
+                <div class="stack-item__meta">
+                  <span>Actual: {{ alert.cantidad_actual | number: '1.0-2' }}</span>
+                  <span>Minimo: {{ alert.stock_minimo | number: '1.0-2' }}</span>
+                </div>
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="empty-copy">No hay alertas activas para esta sucursal.</p>
+        }
+      </article>
+
+      <article class="panel-card">
+        <div class="panel-card__header">
+          <h2>Transferencias activas</h2>
+          <p>Solicitudes y envios que siguen abiertos.</p>
+        </div>
+
+        @if (activeTransfers().length) {
+          <div class="stack-list">
+            @for (transfer of activeTransfers(); track transfer.id_transferencia) {
+              <article class="stack-item">
+                <div>
+                  <strong>Transferencia #{{ transfer.id_transferencia }}</strong>
+                  <small>{{ transfer.estado }} · {{ transfer.fecha_solicitud | date: 'yyyy-MM-dd' }}</small>
+                </div>
+                <div class="stack-item__meta">
+                  <span>Aprobado: {{ transfer.cantidad_aprobada | number: '1.0-2' }}</span>
+                  <span>Pendiente: {{ transfer.cantidad_pendiente | number: '1.0-2' }}</span>
+                </div>
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="empty-copy">No hay transferencias activas en este momento.</p>
+        }
+      </article>
+    </section>
+
+    <section class="operacion-grid">
+      <article class="panel-card">
+        <div class="panel-card__header">
+          <h2>Productos de alta demanda</h2>
+          <p>Referencias con mayor salida para priorizar disponibilidad.</p>
+        </div>
+
+        @if (demandSummary()?.productos_alta_demanda?.length) {
+          <div class="stack-list">
+            @for (product of demandSummary()?.productos_alta_demanda ?? []; track product.id_producto) {
+              <article class="stack-item">
+                <div>
+                  <strong>{{ product.producto }}</strong>
+                  <small>Indice de rotacion: {{ product.indice_rotacion | number: '1.0-2' }}</small>
+                </div>
+                <div class="stack-item__meta">
+                  <span>Vendida: {{ product.cantidad_vendida | number: '1.0-2' }}</span>
+                  <span>Stock: {{ product.stock_actual | number: '1.0-2' }}</span>
+                </div>
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="empty-copy">Todavia no hay suficientes datos de demanda para mostrar.</p>
+        }
+      </article>
+
+      <article class="panel-card">
+        <div class="panel-card__header">
+          <h2>{{ operationExperience().focusTitle }}</h2>
+          <p>{{ operationExperience().focusDescription }}</p>
+        </div>
+
+        <div class="focus-points">
+          @for (point of operationExperience().focusPoints; track point) {
+            <p>{{ point }}</p>
+          }
+        </div>
+
+        <div class="quick-notes">
+          @for (note of quickNotes(); track note) {
+            <span>{{ note }}</span>
+          }
+        </div>
+      </article>
+    </section>
+  }
+</section>

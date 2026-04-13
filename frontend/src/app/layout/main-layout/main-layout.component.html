@@ -1,0 +1,74 @@
+<div class="workspace-shell">
+  <aside class="workspace-shell__sidebar">
+    <div class="sidebar-inner">
+
+      @if (currentUser(); as user) {
+        <section
+          class="user-card"
+          aria-label="Sesión actual"
+          [attr.title]="user.nombre + ' - ' + (user.rol?.nombre ?? '')"
+        >
+          <div class="user-card__avatar">
+            {{ userInitials() }}
+          </div>
+
+          <div class="user-card__content">
+            <p class="user-card__eyebrow">Sesión activa</p>
+            <strong>{{ user.nombre }}</strong>
+            <span>{{ user.correo }}</span>
+            <small>{{ user.rol?.nombre }} · {{ user.sucursal?.nombre ?? 'Alcance global' }}</small>
+          </div>
+        </section>
+      }
+
+      <nav class="nav" aria-label="Principal">
+        @for (item of navigationItems(); track item.path) {
+          <a
+            class="nav__item"
+            [routerLink]="item.path"
+            routerLinkActive="nav__item--active"
+            [routerLinkActiveOptions]="{ exact: item.path === '/app/dashboard' }"
+            [attr.title]="item.label"
+          >
+            <span class="nav__icon" aria-hidden="true">
+              <fa-icon [icon]="resolveIcon(item.icon)"></fa-icon>
+            </span>
+
+            <span class="nav__content">
+              <strong>{{ item.label }}</strong>
+              <small>{{ item.description }}</small>
+            </span>
+          </a>
+        }
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-footer__status">
+          <app-status-badge [label]="apiState().message" [type]="apiState().type" />
+        </div>
+
+        <button class="logout-button" type="button" (click)="logout()" title="Cerrar sesión">
+          <span class="logout-button__icon" aria-hidden="true">
+            <fa-icon [icon]="logoutIcon"></fa-icon>
+          </span>
+          <span class="logout-button__text">Cerrar sesión</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <section class="workspace-shell__content">
+    <header class="topbar">
+      <div class="topbar__content">
+        <p class="topbar__label">Área activa</p>
+        <h2 class="topbar__title">{{ activeSection() }}</h2>
+      </div>
+
+      <p class="topbar__copy">{{ activeSectionDescription() }}</p>
+    </header>
+
+    <main class="page-content">
+      <router-outlet />
+    </main>
+  </section>
+</div>

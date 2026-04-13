@@ -1,0 +1,816 @@
+<section class="ventas-page">
+  <app-page-header
+    eyebrow="Ventas"
+    title="Ventas, clientes y listas de precios"
+    description="Registra ventas por sucursal, valida stock, aplica descuentos y consulta comprobantes comerciales."
+  />
+
+  <nav class="ventas-tabs" aria-label="Secciones de ventas">
+    <button type="button" class="tab-button" [class.tab-button--active]="activeSection() === 'ventas'" (click)="seleccionarSeccion('ventas')">Ventas</button>
+    <button type="button" class="tab-button" [class.tab-button--active]="activeSection() === 'clientes'" (click)="seleccionarSeccion('clientes')">Clientes</button>
+    <button type="button" class="tab-button" [class.tab-button--active]="activeSection() === 'precios'" (click)="seleccionarSeccion('precios')">Listas y precios</button>
+    <button type="button" class="tab-button" [class.tab-button--active]="activeSection() === 'historial'" (click)="seleccionarSeccion('historial')">Historico</button>
+  </nav>
+
+  @if (errorMessage()) {
+    <div class="feedback feedback--error">{{ errorMessage() }}</div>
+  }
+
+  @if (successMessage()) {
+    <div class="feedback feedback--success">{{ successMessage() }}</div>
+  }
+
+  @if (activeSection() === 'ventas') {
+    <section class="ventas-kpis">
+      <article class="kpi-card">
+        <span class="kpi-card__label">Ventas registradas</span>
+        <strong class="kpi-card__value">{{ totalVentas() }}</strong>
+      </article>
+      <article class="kpi-card">
+        <span class="kpi-card__label">Ventas del dia</span>
+        <strong class="kpi-card__value">{{ ventasDelDia() }}</strong>
+      </article>
+      <article class="kpi-card">
+        <span class="kpi-card__label">Clientes activos</span>
+        <strong class="kpi-card__value">{{ totalClientes() }}</strong>
+      </article>
+      <article class="kpi-card">
+        <span class="kpi-card__label">Listas activas</span>
+        <strong class="kpi-card__value">{{ totalListasActivas() }}</strong>
+      </article>
+    </section>
+
+    <section class="catalog-layout">
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Nueva venta</h2>
+            <p>Registra productos, descuentos, lista de precios y comprobante comercial.</p>
+          </div>
+        </header>
+
+        <form class="entry-form" [formGroup]="ventaForm" (ngSubmit)="registrarVenta()">
+          <div class="form-grid">
+            <label class="field">
+              <span class="field__label">Cliente</span>
+              <select formControlName="id_cliente">
+                <option [value]="0">Venta de mostrador</option>
+                @for (cliente of clientesActivos(); track cliente.id_cliente) {
+                  <option [value]="cliente.id_cliente">{{ cliente.nombre }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="field">
+              <span class="field__label">Lista de precios</span>
+              <select formControlName="id_lista_precio">
+                @for (lista of listasPrecioActivas(); track lista.id_lista_precio) {
+                  <option [value]="lista.id_lista_precio">{{ lista.nombre }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="field">
+              <span class="field__label">Sucursal</span>
+              @if (hasFixedSucursal()) {
+                <input type="text" [value]="getSucursalNombre(ventaForm.controls.id_sucursal.value)" readonly />
+              } @else {
+                <select formControlName="id_sucursal">
+                  @for (sucursal of sucursalesActivas(); track sucursal.id_sucursal) {
+                    <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+                  }
+                </select>
+              }
+            </label>
+
+            <label class="field">
+              <span class="field__label">Usuario responsable</span>
+              <input type="text" [value]="usuarioNombre()" readonly />
+            </label>
+          </div>
+
+          <div class="detail-builder">
+            <h3>Agregar producto</h3>
+
+            <div class="detail-builder__grid" [formGroup]="detalleForm">
+              <label class="field">
+                <span class="field__label">Producto</span>
+                <select formControlName="id_producto">
+                  @for (producto of productosDisponiblesVenta(); track producto.id_producto) {
+                    <option [value]="producto.id_producto">
+                      {{ producto.nombre }} ({{ producto.codigo }})
+                    </option>
+                  }
+                </select>
+                <small class="field__hint">
+                  Solo se muestran productos con stock disponible y precio activo en la lista seleccionada.
+                </small>
+              </label>
+
+              <label class="field">
+                <span class="field__label">Unidad</span>
+                <select formControlName="id_producto_unidad" [disabled]="!unidadesDisponiblesDetalle().length">
+                  @for (unidad of unidadesDisponiblesDetalle(); track unidad.id_producto_unidad) {
+                    <option [value]="unidad.id_producto_unidad">{{ unidad.label }}</option>
+                  }
+                </select>
+
+                @if (unidadesDisponiblesDetalle().length) {
+                  <small class="field__hint">
+                    El texto entre parentesis muestra cuantas unidades base representa la unidad seleccionada.
+                  </small>
+                }
+
+                @if (!unidadesDisponiblesDetalle().length) {
+                  <small class="field__hint">
+                    El producto seleccionado no tiene unidades activas disponibles.
+                  </small>
+                }
+              </label>
+
+              <label class="field">
+                <span class="field__label">Cantidad</span>
+                <input type="number" formControlName="cantidad" min="0.01" step="0.01" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Descuento</span>
+                <input type="number" formControlName="descuento" min="0" step="0.01" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Precio actual</span>
+                <input type="text" [value]="(precioActualDetalle() ?? 0) | currency: 'COP':'symbol':'1.0-0'" readonly />
+                <small class="field__hint">
+                  Este valor se calcula desde el precio base de la lista y se ajusta segun la unidad seleccionada.
+                </small>
+              </label>
+
+              <label class="field">
+                <span class="field__label">Stock disponible</span>
+                <input type="text" [value]="stockDisponibleDetalle() || 'Sin inventario'" readonly />
+                <small class="field__hint">
+                  El stock se muestra convertido a la unidad seleccionada arriba.
+                </small>
+              </label>
+
+              <button class="btn btn--ghost" type="button" (click)="agregarDetalleVenta()">Agregar detalle</button>
+            </div>
+          </div>
+
+          <div class="table-shell">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Unidad</th>
+                  <th>Cantidad</th>
+                  <th>Precio</th>
+                  <th>Descuento</th>
+                  <th>Subtotal</th>
+                  <th>Accion</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (detalle of draftDetalles(); track $index) {
+                  <tr>
+                    <td>{{ getProductoNombre(detalle.id_producto) }}</td>
+                    <td>{{ getUnidadNombre(detalle.id_producto_unidad) }}</td>
+                    <td>{{ detalle.cantidad | number: '1.0-2' }}</td>
+                    <td>
+                      {{ getPrecioUnitarioDraft(detalle.id_producto, ventaForm.controls.id_lista_precio.value, detalle.id_producto_unidad) | currency: 'COP':'symbol':'1.0-0' }}
+                    </td>
+                    <td>{{ (detalle.descuento ?? 0) | currency: 'COP':'symbol':'1.0-0' }}</td>
+                    <td>{{ getSubtotalDraft(detalle) | currency: 'COP':'symbol':'1.0-0' }}</td>
+                    <td>
+                      <button class="btn btn--danger" type="button" (click)="removerDetalleVenta($index)">Quitar</button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="7" class="empty-cell">Aun no hay productos agregados a la venta.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="totals-strip">
+            <article class="total-card">
+              <span>Subtotal</span>
+              <strong>{{ draftSubtotal() | currency: 'COP':'symbol':'1.0-0' }}</strong>
+            </article>
+            <article class="total-card">
+              <span>Descuento total</span>
+              <strong>{{ draftDescuentoTotal() | currency: 'COP':'symbol':'1.0-0' }}</strong>
+            </article>
+            <article class="total-card">
+              <span>Total</span>
+              <strong>{{ draftTotal() | currency: 'COP':'symbol':'1.0-0' }}</strong>
+            </article>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit" [disabled]="submittingVenta()">
+              {{ submittingVenta() ? 'Registrando...' : 'Registrar venta' }}
+            </button>
+          </div>
+        </form>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>Venta seleccionada</h2>
+            <p>Consulta el comprobante, responsable y detalle comercial confirmado.</p>
+          </div>
+        </header>
+
+        @if (selectedVenta(); as venta) {
+          <div class="selected-card">
+            <h3>{{ venta.comprobante }}</h3>
+            <span>{{ venta.cliente_nombre }}</span>
+
+            <dl class="selected-card__stats">
+              <div>
+                <dt>Sucursal</dt>
+                <dd>{{ getSucursalNombre(venta.id_sucursal) }}</dd>
+              </div>
+              <div>
+                <dt>Lista</dt>
+                <dd>{{ venta.lista_precio_nombre }}</dd>
+              </div>
+              <div>
+                <dt>Responsable</dt>
+                <dd>{{ getResponsableVenta(venta) }}</dd>
+              </div>
+              <div>
+                <dt>Total</dt>
+                <dd>{{ venta.total | currency: 'COP':'symbol':'1.0-0' }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="mini-list">
+            @for (detalle of detallesVentaSeleccionada(); track detalle.id_detalle_venta) {
+              <article class="mini-list__item">
+                <strong>{{ detalle.producto }}</strong>
+                <small>{{ detalle.codigo_producto }} - {{ detalle.unidad }}</small>
+                <small>
+                  Cantidad: {{ detalle.cantidad | number: '1.0-2' }} -
+                  Precio: {{ detalle.precio_unitario | currency: 'COP':'symbol':'1.0-0' }} -
+                  Subtotal: {{ detalle.subtotal | currency: 'COP':'symbol':'1.0-0' }}
+                </small>
+              </article>
+            } @empty {
+              <p class="panel__empty">Selecciona una venta para consultar su detalle.</p>
+            }
+          </div>
+        } @else {
+          <p class="panel__empty">No hay venta seleccionada.</p>
+        }
+      </article>
+    </section>
+
+    <article class="panel panel--table">
+      <header class="panel__header">
+        <div>
+          <h2>Ventas registradas</h2>
+          <p>Consulta comprobantes emitidos y selecciona una venta para revisar su salida.</p>
+        </div>
+      </header>
+
+      <div class="table-shell">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Comprobante</th>
+              <th>Cliente</th>
+              <th>Sucursal</th>
+              <th>Lista</th>
+              <th>Total</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (venta of ventasVm(); track venta.id_venta) {
+              <tr (click)="seleccionarVenta(venta.id_venta)" [class.data-table__row--active]="selectedVentaId() === venta.id_venta">
+                <td>{{ venta.comprobante }}</td>
+                <td>{{ venta.cliente_nombre }}</td>
+                <td>{{ getSucursalNombre(venta.id_sucursal) }}</td>
+                <td>{{ venta.lista_precio_nombre }}</td>
+                <td>{{ venta.total | currency: 'COP':'symbol':'1.0-0' }}</td>
+                <td>{{ venta.fecha || 'Sin fecha' }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="empty-cell">No hay ventas registradas.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </article>
+  }
+
+  @if (activeSection() === 'clientes') {
+    <section class="catalog-layout">
+      <article class="panel panel--table">
+        <header class="panel__header">
+          <div>
+            <h2>Clientes</h2>
+            <p>Administra clientes consultables para ventas y comprobantes.</p>
+          </div>
+        </header>
+
+        <div class="table-shell">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Documento</th>
+                <th>Cliente</th>
+                <th>Contacto</th>
+                <th>Estado</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cliente of clientes(); track cliente.id_cliente) {
+                <tr>
+                  <td>
+                    <strong>{{ cliente.tipo_documento?.codigo || 'DOC' }}</strong>
+                    <small>{{ cliente.numero_documento }}</small>
+                  </td>
+                  <td><strong>{{ cliente.nombre }}</strong></td>
+                  <td>
+                    <strong>{{ cliente.correo || 'Sin correo' }}</strong>
+                    <small>{{ cliente.telefono || 'Sin telefono' }}</small>
+                  </td>
+                  <td>
+                    <span class="status-pill" [class.status-pill--ok]="cliente.activo" [class.status-pill--danger]="!cliente.activo">
+                      {{ cliente.activo ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </td>
+                  <td class="actions-cell">
+                    <div class="actions-group">
+                      <button
+                        type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar cliente"
+                        aria-label="Editar cliente"
+                        (click)="editarCliente(cliente)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="icon-button"
+                        [class.icon-button--deactivate]="cliente.activo"
+                        [class.icon-button--activate]="!cliente.activo"
+                        [title]="cliente.activo ? 'Desactivar cliente' : 'Activar cliente'"
+                        [attr.aria-label]="cliente.activo ? 'Desactivar cliente' : 'Activar cliente'"
+                        (click)="toggleEstadoCliente(cliente)"
+                      >
+                        <fa-icon [icon]="cliente.activo ? faToggleOn : faToggleOff"></fa-icon>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="empty-cell">No hay clientes registrados.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>{{ selectedClienteId() ? 'Editar cliente' : 'Nuevo cliente' }}</h2>
+            <p>Registra la informacion basica que puede asociarse a una venta.</p>
+          </div>
+        </header>
+
+        <form class="entry-form" [formGroup]="clienteForm" (ngSubmit)="guardarCliente()">
+          <label class="field">
+            <span class="field__label">Tipo de documento</span>
+            <select formControlName="id_tipo_documento">
+              @for (tipo of tiposDocumentoActivos(); track tipo.id_tipo_documento) {
+                <option [value]="tipo.id_tipo_documento">{{ tipo.nombre }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Numero de documento</span>
+            <input type="text" formControlName="numero_documento" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Nombre</span>
+            <input type="text" formControlName="nombre" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Correo</span>
+            <input type="email" formControlName="correo" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Telefono</span>
+            <input type="text" formControlName="telefono" />
+          </label>
+
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit" [disabled]="submittingCliente()">
+              {{ submittingCliente() ? 'Guardando...' : (selectedClienteId() ? 'Actualizar' : 'Crear cliente') }}
+            </button>
+            <button class="btn btn--ghost" type="button" (click)="resetClienteForm()">Limpiar</button>
+          </div>
+        </form>
+      </article>
+    </section>
+  }
+
+  @if (activeSection() === 'precios') {
+    <section class="catalog-layout">
+      <article class="panel panel--table">
+        <header class="panel__header">
+          <div>
+            <h2>Listas de precios</h2>
+            <p>Administra listas activas y su disponibilidad comercial.</p>
+          </div>
+        </header>
+
+        <div class="table-shell">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Lista</th>
+                <th>Descripcion</th>
+                <th>Estado</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (lista of listasPrecio(); track lista.id_lista_precio) {
+                <tr>
+                  <td><strong>{{ lista.nombre }}</strong></td>
+                  <td>{{ lista.descripcion || 'Sin descripcion' }}</td>
+                  <td>
+                    <span class="status-pill" [class.status-pill--ok]="lista.activa" [class.status-pill--danger]="!lista.activa">
+                      {{ lista.activa ? 'Activa' : 'Inactiva' }}
+                    </span>
+                  </td>
+                  <td class="actions-cell">
+                    <div class="actions-group">
+                      <button
+                        type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar lista"
+                        aria-label="Editar lista"
+                        (click)="editarListaPrecio(lista)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="icon-button"
+                        [class.icon-button--deactivate]="lista.activa"
+                        [class.icon-button--activate]="!lista.activa"
+                        [title]="lista.activa ? 'Desactivar lista' : 'Activar lista'"
+                        [attr.aria-label]="lista.activa ? 'Desactivar lista' : 'Activar lista'"
+                        (click)="toggleEstadoListaPrecio(lista)"
+                      >
+                        <fa-icon [icon]="lista.activa ? faToggleOn : faToggleOff"></fa-icon>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4" class="empty-cell">No hay listas de precios registradas.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>{{ selectedListaPrecioId() ? 'Editar lista' : 'Nueva lista' }}</h2>
+            <p>Define el catalogo comercial que aplicara sobre los productos vendidos.</p>
+          </div>
+        </header>
+
+        <form class="entry-form" [formGroup]="listaPrecioForm" (ngSubmit)="guardarListaPrecio()">
+          <label class="field">
+            <span class="field__label">Nombre</span>
+            <input type="text" formControlName="nombre" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Descripcion</span>
+            <input type="text" formControlName="descripcion" />
+          </label>
+
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit" [disabled]="submittingLista()">
+              {{ submittingLista() ? 'Guardando...' : (selectedListaPrecioId() ? 'Actualizar lista' : 'Crear lista') }}
+            </button>
+            <button class="btn btn--ghost" type="button" (click)="resetListaPrecioForm()">Limpiar</button>
+          </div>
+        </form>
+      </article>
+    </section>
+
+    <section class="catalog-layout">
+      <article class="panel panel--table">
+        <header class="panel__header">
+          <div>
+            <h2>Precios por producto</h2>
+            <p>Asigna precios por lista para que la venta tome el valor correcto.</p>
+          </div>
+        </header>
+
+        <div class="table-shell">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Lista</th>
+                <th>Precio</th>
+                <th>Vigencia</th>
+                <th>Estado</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (precio of preciosListaSeleccionada(); track precio.id_precio_producto) {
+                <tr>
+                  <td>
+                    <strong>{{ precio.producto_nombre }}</strong>
+                    <small>{{ precio.codigo_producto }}</small>
+                  </td>
+                  <td>{{ precio.lista_nombre }}</td>
+                  <td>{{ precio.precio | currency: 'COP':'symbol':'1.0-0' }}</td>
+                  <td>{{ precio.fecha_vigencia || 'Sin vigencia' }}</td>
+                  <td>
+                    <span class="status-pill" [class.status-pill--ok]="precio.activo" [class.status-pill--danger]="!precio.activo">
+                      {{ precio.activo ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </td>
+                  <td class="actions-cell">
+                    <div class="actions-group">
+                      <button
+                        type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar precio"
+                        aria-label="Editar precio"
+                        (click)="editarPrecioProducto(precio)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="icon-button"
+                        [class.icon-button--deactivate]="precio.activo"
+                        [class.icon-button--activate]="!precio.activo"
+                        [title]="precio.activo ? 'Desactivar precio' : 'Activar precio'"
+                        [attr.aria-label]="precio.activo ? 'Desactivar precio' : 'Activar precio'"
+                        (click)="toggleEstadoPrecioProducto(precio)"
+                      >
+                        <fa-icon [icon]="precio.activo ? faToggleOn : faToggleOff"></fa-icon>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-cell">No hay precios configurados para la seleccion actual.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header">
+          <div>
+            <h2>{{ selectedPrecioProductoId() ? 'Editar precio' : 'Nuevo precio' }}</h2>
+            <p>Relaciona producto, lista y precio de venta disponible.</p>
+          </div>
+        </header>
+
+        <form class="entry-form" [formGroup]="precioProductoForm" (ngSubmit)="guardarPrecioProducto()">
+          <label class="field">
+            <span class="field__label">Producto</span>
+            <select formControlName="id_producto">
+              @for (producto of productosActivos(); track producto.id_producto) {
+                <option [value]="producto.id_producto">{{ producto.nombre }}</option>
+              }
+            </select>
+            <small class="field__hint">
+              Selecciona cualquier producto activo para asignarle un precio en la lista.
+            </small>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Lista de precios</span>
+            <select formControlName="id_lista_precio">
+              @for (lista of listasPrecio(); track lista.id_lista_precio) {
+                <option [value]="lista.id_lista_precio">{{ lista.nombre }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Precio base</span>
+            <input type="number" formControlName="precio" min="0.01" step="0.01" />
+            <small class="field__hint">
+              Registra aqui el precio de la unidad base del producto. En ventas el sistema lo convierte segun la unidad elegida.
+            </small>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Fecha de vigencia</span>
+            <input type="date" formControlName="fecha_vigencia" />
+          </label>
+
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit" [disabled]="submittingPrecio()">
+              {{ submittingPrecio() ? 'Guardando...' : (selectedPrecioProductoId() ? 'Actualizar precio' : 'Crear precio') }}
+            </button>
+            <button class="btn btn--ghost" type="button" (click)="resetPrecioProductoForm()">Limpiar</button>
+          </div>
+        </form>
+      </article>
+    </section>
+  }
+
+  @if (activeSection() === 'historial') {
+    <section class="panel panel--filters">
+      <form class="filters-form" [formGroup]="historialForm" (ngSubmit)="aplicarFiltrosHistorial()">
+        <label class="field">
+          <span class="field__label">Comprobante</span>
+          <input type="text" formControlName="comprobante" placeholder="Ej. VTA-20260411-000001" />
+        </label>
+
+        <label class="field">
+          <span class="field__label">Cliente</span>
+          <select formControlName="id_cliente">
+            <option [value]="0">Todos</option>
+            @for (cliente of clientes(); track cliente.id_cliente) {
+              <option [value]="cliente.id_cliente">{{ cliente.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Lista</span>
+          <select formControlName="id_lista_precio">
+            <option [value]="0">Todas</option>
+            @for (lista of listasPrecio(); track lista.id_lista_precio) {
+              <option [value]="lista.id_lista_precio">{{ lista.nombre }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Sucursal</span>
+          @if (hasFixedSucursal()) {
+            <input type="text" [value]="getSucursalNombre(historialForm.controls.id_sucursal.value)" readonly />
+          } @else {
+            <select formControlName="id_sucursal">
+              <option [value]="0">Todas</option>
+              @for (sucursal of sucursalesActivas(); track sucursal.id_sucursal) {
+                <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+              }
+            </select>
+          }
+        </label>
+
+        <label class="field">
+          <span class="field__label">Desde</span>
+          <input type="date" formControlName="fecha_desde" />
+        </label>
+
+        <label class="field">
+          <span class="field__label">Hasta</span>
+          <input type="date" formControlName="fecha_hasta" />
+        </label>
+
+        <button class="btn btn--primary" type="submit">Filtrar</button>
+      </form>
+    </section>
+
+    <section class="catalog-layout">
+      <article class="panel panel--table">
+        <header class="panel__header">
+          <div>
+            <h2>Historico de ventas</h2>
+            <p>Consulta ventas por comprobante, cliente, lista de precios y sucursal.</p>
+          </div>
+        </header>
+
+        <div class="table-shell">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Comprobante</th>
+                <th>Cliente</th>
+                <th>Sucursal</th>
+                <th>Lista</th>
+                <th>Total</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (venta of historialVm(); track venta.id_venta) {
+                <tr (click)="seleccionarVenta(venta.id_venta)" [class.data-table__row--active]="selectedVentaId() === venta.id_venta">
+                  <td>{{ venta.comprobante }}</td>
+                  <td>{{ venta.cliente_nombre }}</td>
+                  <td>{{ getSucursalNombre(venta.id_sucursal) }}</td>
+                  <td>{{ venta.lista_precio_nombre }}</td>
+                  <td>{{ venta.total | currency: 'COP':'symbol':'1.0-0' }}</td>
+                  <td>{{ venta.fecha || 'Sin fecha' }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-cell">No hay ventas para los filtros aplicados.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header class="panel__header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <h2>Detalle historico</h2>
+            <p>Profundiza el comprobante para revisar productos vendidos y trazabilidad.</p>
+          </div>
+          @if (selectedVenta()) {
+            <button class="btn btn--primary" type="button" (click)="descargarPdf()">
+              Descargar PDF
+            </button>
+          }
+        </header>
+
+        @if (selectedVenta(); as venta) {
+          <div class="selected-card">
+            <h3>{{ venta.comprobante }}</h3>
+            <span>{{ venta.cliente_nombre }}</span>
+
+            <dl class="selected-card__stats">
+              <div>
+                <dt>Responsable</dt>
+                <dd>{{ getResponsableVenta(venta) }}</dd>
+              </div>
+              <div>
+                <dt>Descuento</dt>
+                <dd>{{ venta.descuento_total | currency: 'COP':'symbol':'1.0-0' }}</dd>
+              </div>
+              <div>
+                <dt>Total</dt>
+                <dd>{{ venta.total | currency: 'COP':'symbol':'1.0-0' }}</dd>
+              </div>
+              <div>
+                <dt>Fecha</dt>
+                <dd>{{ venta.fecha || 'Sin fecha' }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="mini-list">
+            @for (detalle of detallesVentaSeleccionada(); track detalle.id_detalle_venta) {
+              <article class="mini-list__item">
+                <strong>{{ detalle.producto }}</strong>
+                <small>{{ detalle.codigo_producto }} - {{ detalle.unidad }}</small>
+                <small>
+                  Cantidad: {{ detalle.cantidad | number: '1.0-2' }} -
+                  Descuento: {{ detalle.descuento | currency: 'COP':'symbol':'1.0-0' }} -
+                  Subtotal: {{ detalle.subtotal | currency: 'COP':'symbol':'1.0-0' }}
+                </small>
+              </article>
+            } @empty {
+              <p class="panel__empty">Selecciona una venta para consultar su historico.</p>
+            }
+          </div>
+        } @else {
+          <p class="panel__empty">No hay venta seleccionada.</p>
+        }
+      </article>
+    </section>
+  }
+</section>

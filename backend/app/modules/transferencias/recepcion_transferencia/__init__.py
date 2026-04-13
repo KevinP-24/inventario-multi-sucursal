@@ -1,0 +1,1 @@
+"""Entidad recepcion_transferencia."""
