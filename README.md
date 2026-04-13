@@ -252,7 +252,7 @@ La IA aportó velocidad y apoyo estructural, pero la validación final y los aju
 Estimación aproximada del apoyo de IA en el proyecto:
 
 * **coherencia documental y organización técnica:** 30%
-* **estructuras repetitivas de código y soporte de implementación:** 50%
+* **estructuras repetitivas de código y soporte de implementación:** 60%
 * **estructura inicial del modelo de base de datos e infraestructura Docker:** 30%
 * **validación visual rápida y estilos CSS:** 10%
 
