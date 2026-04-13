@@ -64,6 +64,7 @@ interface DetalleTransferenciaVm extends DetalleTransferenciaDto {
 interface RevisionDetalleDraft {
   readonly id_detalle_transferencia: number;
   readonly producto: string;
+  readonly unidad: string;
   readonly cantidad_solicitada: number;
   readonly stock_disponible: number;
   cantidad_aprobada: number;
@@ -193,7 +194,7 @@ export class TransferenciasPage implements OnInit {
       })
       .map((item) => ({
         id_producto_unidad: Number(item.id_producto_unidad),
-        label: `${item.unidad_medida?.nombre ?? 'Unidad'} (${item.unidad_medida?.simbolo ?? '-'})`
+        label: this.buildUnidadLabel(item)
       }));
   }
 
@@ -513,7 +514,7 @@ export class TransferenciasPage implements OnInit {
 
     const confirmed = await this.uiAlerts.confirm({
       title: 'Aprobar transferencia',
-      text: `¿Confirmas la aprobacion de la transferencia #${selected.id_transferencia}? El stock en origen sera descontado.`,
+      text: `¿Confirmas la aprobacion de la transferencia #${selected.id_transferencia}? Luego podras registrar el envio y descontar el inventario en origen.`,
       icon: 'warning',
       confirmButtonText: 'Si, aprobar'
     });
@@ -778,11 +779,111 @@ export class TransferenciasPage implements OnInit {
     );
   }
 
-  protected getUnidadNombre(idProductoUnidad: number): string {
-    return (
-      this.productoUnidades().find((item) => item.id_producto_unidad === idProductoUnidad)
-        ?.unidad_medida?.nombre ?? `Unidad #${idProductoUnidad}`
+private getProductoUnidadById(idProductoUnidad: number): ProductoUnidadDto | null {
+  return (
+    this.productoUnidadesActivas().find(
+      (item) => Number(item.id_producto_unidad) === Number(idProductoUnidad)
+    ) ?? null
+  );
+}
+
+private getInventarioProductoSucursal(
+  idProducto: number,
+  idSucursal: number
+): InventarioSucursalDto | null {
+  return (
+    this.inventarios().find(
+      (item) =>
+        Number(item.id_producto) === Number(idProducto) &&
+        Number(item.id_sucursal) === Number(idSucursal)
+    ) ?? null
+  );
+}
+
+private getStockDisponibleEnUnidad(
+  idProducto: number,
+  idSucursal: number,
+  idProductoUnidad: number
+): number {
+  const inventario = this.getInventarioProductoSucursal(idProducto, idSucursal);
+  const productoUnidad = this.getProductoUnidadById(idProductoUnidad);
+
+  if (!inventario || !productoUnidad) {
+    return 0;
+  }
+
+  const factor = Number(productoUnidad.factor_conversion || 1);
+
+  if (!factor || factor <= 0) {
+    return 0;
+  }
+
+  return Number(inventario.cantidad_actual) / factor;
+}
+
+private buildUnidadLabel(unidad: ProductoUnidadDto): string {
+  const nombre = unidad.unidad_medida?.nombre?.trim() || 'Unidad';
+  const simboloPropio = unidad.unidad_medida?.simbolo?.trim() || 'und';
+  const factor = Number(unidad.factor_conversion ?? 1);
+
+  const unidadBase = this.productoUnidadesActivas().find(
+    (item) =>
+      Number(item.id_producto) === Number(unidad.id_producto) &&
+      Boolean(item.es_base)
+  );
+
+  const simboloBase = unidadBase?.unidad_medida?.simbolo?.trim() || simboloPropio || 'und';
+  const factorTexto = this.formatFactor(factor);
+
+  if (unidad.es_base) {
+    return `${nombre} base (1 ${simboloBase})`;
+  }
+
+  return `${nombre} (${factorTexto} ${simboloBase})`;
+}
+
+  private formatFactor(value: number): string {
+    const normalized = Number(value);
+
+    if (!Number.isFinite(normalized) || normalized <= 0) {
+      return '1';
+    }
+
+    return Number.isInteger(normalized)
+      ? String(normalized)
+      : normalized.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  protected stockDisponibleDetalle(): string {
+    const idProducto = Number(this.detalleForm.controls.id_producto.value || 0);
+    const idSucursal = Number(this.transferForm.controls.id_sucursal_origen.value || 0);
+    const idProductoUnidad = Number(this.detalleForm.controls.id_producto_unidad.value || 0);
+
+    if (!idProducto || !idSucursal || !idProductoUnidad) {
+      return 'Sin inventario';
+    }
+
+    const disponible = this.getStockDisponibleEnUnidad(
+      idProducto,
+      idSucursal,
+      idProductoUnidad
     );
+
+    const unidad = this.getProductoUnidadById(idProductoUnidad);
+    const simbolo = unidad?.unidad_medida?.simbolo ?? '';
+
+    return `${disponible.toLocaleString('es-CO', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    })}${simbolo ? ` ${simbolo}` : ''}`;
+  }
+
+  protected getUnidadNombre(idProductoUnidad: number): string {
+    const unidad = this.productoUnidadesActivas().find(
+      (item) => Number(item.id_producto_unidad) === Number(idProductoUnidad)
+    );
+
+    return unidad ? this.buildUnidadLabel(unidad) : `Unidad #${idProductoUnidad}`;
   }
 
   protected getSucursalNombre(idSucursal: number | null | undefined): string {
@@ -876,8 +977,13 @@ export class TransferenciasPage implements OnInit {
       detalles.map((item) => ({
         id_detalle_transferencia: item.id_detalle_transferencia,
         producto: item.producto,
+        unidad: item.unidad,
         cantidad_solicitada: item.cantidad_solicitada,
-        stock_disponible: this.getStockOrigen(item.id_producto, selected.id_sucursal_origen),
+        stock_disponible: this.getStockDisponibleEnUnidad(
+          item.id_producto,
+          selected.id_sucursal_origen,
+          item.id_producto_unidad
+        ),
         cantidad_aprobada: item.cantidad_aprobada
       }))
     );
@@ -936,10 +1042,7 @@ export class TransferenciasPage implements OnInit {
         ...item,
         producto: producto?.nombre ?? `Producto #${item.id_producto}`,
         codigo_producto: producto?.codigo ?? `PRD-${item.id_producto}`,
-        unidad:
-          unidad?.unidad_medida?.nombre ??
-          unidad?.unidad_medida?.simbolo ??
-          `Unidad #${item.id_producto_unidad}`
+        unidad: unidad ? this.buildUnidadLabel(unidad) : `Unidad #${item.id_producto_unidad}`
       };
     });
   }

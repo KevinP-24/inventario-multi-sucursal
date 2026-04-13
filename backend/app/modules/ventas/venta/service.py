@@ -167,6 +167,9 @@ def preparar_detalles_de_venta(datos):
             )
             continue
 
+        # La lista de precios se interpreta como precio de unidad base.
+        precio_unitario_aplicado = precio.precio * factor_conversion
+
         inventario = consultar_inventario_por_sucursal_y_producto_en_bd(
             datos["id_sucursal"],
             id_producto,
@@ -185,7 +188,7 @@ def preparar_detalles_de_venta(datos):
             )
             continue
 
-        subtotal_bruto = cantidad * precio.precio
+        subtotal_bruto = cantidad * precio_unitario_aplicado
         if descuento > subtotal_bruto:
             errores[f"{prefijo}_descuento"] = "El descuento no puede superar el subtotal."
             continue
@@ -195,7 +198,7 @@ def preparar_detalles_de_venta(datos):
             id_producto=id_producto,
             id_producto_unidad=id_producto_unidad,
             cantidad=cantidad,
-            precio_unitario=precio.precio,
+            precio_unitario=precio_unitario_aplicado,
             descuento=descuento,
             subtotal=subtotal,
         )

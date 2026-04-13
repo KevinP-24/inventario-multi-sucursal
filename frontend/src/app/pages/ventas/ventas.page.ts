@@ -155,7 +155,7 @@ export class VentasPage implements OnInit {
       })
       .map((item) => ({
         id_producto_unidad: Number(item.id_producto_unidad),
-        label: `${item.unidad_medida?.nombre ?? 'Unidad'} (${item.unidad_medida?.simbolo ?? '-'})`
+        label: this.buildUnidadLabel(item)
       }));
   }
 
@@ -232,16 +232,16 @@ export class VentasPage implements OnInit {
     return this.ventasVm().find((item) => item.id_venta === idVenta) ?? null;
   });
 
-protected precioActualDetalle(): number | null {
-  const idProducto = Number(this.detalleForm.controls.id_producto.value || 0);
-  const idListaPrecio = Number(this.ventaForm.controls.id_lista_precio.value || 0);
+  protected precioActualDetalle(): number | null {
+    const idProducto = Number(this.detalleForm.controls.id_producto.value || 0);
+    const idListaPrecio = Number(this.ventaForm.controls.id_lista_precio.value || 0);
 
-  if (!idProducto || !idListaPrecio) {
-    return null;
+    if (!idProducto || !idListaPrecio) {
+      return null;
+    }
+
+    return this.getPrecioProductoActivo(idProducto, idListaPrecio)?.precio ?? null;
   }
-
-  return this.getPrecioProductoActivo(idProducto, idListaPrecio)?.precio ?? null;
-}
 
   protected stockDisponibleDetalle(): string {
     const idProducto = Number(this.detalleForm.controls.id_producto.value || 0);
@@ -275,14 +275,17 @@ protected precioActualDetalle(): number | null {
     this.draftDetalles().reduce((acc, item) => {
       const precio = this.getPrecioUnitarioDraft(
         item.id_producto,
-        Number(this.ventaForm.controls.id_lista_precio.value || 0)
+        Number(this.ventaForm.controls.id_lista_precio.value || 0),
+        item.id_producto_unidad
       );
       return acc + item.cantidad * precio;
     }, 0)
   );
+
   readonly draftDescuentoTotal = computed(() =>
     this.draftDetalles().reduce((acc, item) => acc + (item.descuento ?? 0), 0)
   );
+
   readonly draftTotal = computed(() => this.draftSubtotal() - this.draftDescuentoTotal());
 
   readonly totalVentas = computed(() => this.ventasVm().length);
@@ -958,12 +961,46 @@ protected precioActualDetalle(): number | null {
   }
 
   protected getUnidadNombre(idProductoUnidad: number): string {
-    return (
-      this.productoUnidades().find(
-        (item) => Number(item.id_producto_unidad) === Number(idProductoUnidad)
-      )?.unidad_medida?.nombre ?? `Unidad #${idProductoUnidad}`
+    const unidad = this.productoUnidades().find(
+      (item) => Number(item.id_producto_unidad) === Number(idProductoUnidad)
     );
+
+    return unidad ? this.buildUnidadLabel(unidad) : `Unidad #${idProductoUnidad}`;
   }
+
+  private buildUnidadLabel(unidad: ProductoUnidadDto): string {
+    const nombre = unidad.unidad_medida?.nombre?.trim() || 'Unidad';
+    const simboloPropio = unidad.unidad_medida?.simbolo?.trim() || 'und';
+    const factor = Number(unidad.factor_conversion ?? 1);
+
+    const unidadBase = this.productoUnidadesActivas().find(
+      (item) =>
+        Number(item.id_producto) === Number(unidad.id_producto) &&
+        Boolean(item.es_base)
+    );
+
+    const simboloBase = unidadBase?.unidad_medida?.simbolo?.trim() || simboloPropio || 'und';
+    const factorTexto = this.formatFactor(factor);
+
+    if (unidad.es_base) {
+      return `${nombre} base (1 ${simboloBase})`;
+    }
+
+    return `${nombre} (${factorTexto} ${simboloBase})`;
+  }
+
+  private formatFactor(value: number): string {
+    const normalized = Number(value);
+
+    if (!Number.isFinite(normalized) || normalized <= 0) {
+      return '1';
+    }
+
+    return Number.isInteger(normalized)
+      ? String(normalized)
+      : normalized.toFixed(2).replace(/\.?0+$/, '');
+  }
+
 
   protected getSucursalNombre(idSucursal: number | null | undefined): string {
     if (!idSucursal) {
@@ -995,14 +1032,23 @@ protected precioActualDetalle(): number | null {
     );
   }
 
-  protected getPrecioUnitarioDraft(idProducto: number, idListaPrecio: number): number {
-    return this.getPrecioProductoActivo(idProducto, idListaPrecio)?.precio ?? 0;
+  protected getPrecioUnitarioDraft(
+    idProducto: number,
+    idListaPrecio: number,
+    idProductoUnidad: number
+  ): number {
+    const precioBase = this.getPrecioProductoActivo(idProducto, idListaPrecio)?.precio ?? 0;
+    const unidad = this.getProductoUnidadById(idProductoUnidad);
+    const factor = Number(unidad?.factor_conversion || 1);
+
+    return precioBase * factor;
   }
 
   protected getSubtotalDraft(detalle: CrearDetalleVentaDto): number {
     const precio = this.getPrecioUnitarioDraft(
       detalle.id_producto,
-      Number(this.ventaForm.controls.id_lista_precio.value || 0)
+      Number(this.ventaForm.controls.id_lista_precio.value || 0),
+      detalle.id_producto_unidad
     );
     return detalle.cantidad * precio - (detalle.descuento ?? 0);
   }
@@ -1211,10 +1257,7 @@ private getStockDisponibleEnUnidad(
         ...item,
         producto: producto?.nombre ?? `Producto #${item.id_producto}`,
         codigo_producto: producto?.codigo ?? `PRD-${item.id_producto}`,
-        unidad:
-          unidad?.unidad_medida?.nombre ??
-          unidad?.unidad_medida?.simbolo ??
-          `Unidad #${item.id_producto_unidad}`
+        unidad: unidad ? this.buildUnidadLabel(unidad) : `Unidad #${item.id_producto_unidad}`
       };
     });
   }

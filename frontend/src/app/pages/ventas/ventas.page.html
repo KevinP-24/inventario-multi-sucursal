@@ -114,6 +114,13 @@
                     <option [value]="unidad.id_producto_unidad">{{ unidad.label }}</option>
                   }
                 </select>
+
+                @if (unidadesDisponiblesDetalle().length) {
+                  <small class="field__hint">
+                    El texto entre parentesis muestra cuantas unidades base representa la unidad seleccionada.
+                  </small>
+                }
+
                 @if (!unidadesDisponiblesDetalle().length) {
                   <small class="field__hint">
                     El producto seleccionado no tiene unidades activas disponibles.
@@ -134,11 +141,17 @@
               <label class="field">
                 <span class="field__label">Precio actual</span>
                 <input type="text" [value]="(precioActualDetalle() ?? 0) | currency: 'COP':'symbol':'1.0-0'" readonly />
+                <small class="field__hint">
+                  Este valor se calcula desde el precio base de la lista y se ajusta segun la unidad seleccionada.
+                </small>
               </label>
 
               <label class="field">
                 <span class="field__label">Stock disponible</span>
                 <input type="text" [value]="stockDisponibleDetalle() || 'Sin inventario'" readonly />
+                <small class="field__hint">
+                  El stock se muestra convertido a la unidad seleccionada arriba.
+                </small>
               </label>
 
               <button class="btn btn--ghost" type="button" (click)="agregarDetalleVenta()">Agregar detalle</button>
@@ -164,8 +177,7 @@
                     <td>{{ getProductoNombre(detalle.id_producto) }}</td>
                     <td>{{ getUnidadNombre(detalle.id_producto_unidad) }}</td>
                     <td>{{ detalle.cantidad | number: '1.0-2' }}</td>
-                    <td>{{ getPrecioUnitarioDraft(detalle.id_producto, ventaForm.controls.id_lista_precio.value) | currency: 'COP':'symbol':'1.0-0' }}</td>
-                    <td>{{ (detalle.descuento || 0) | currency: 'COP':'symbol':'1.0-0' }}</td>
+                    <td>{{ getPrecioUnitarioDraft(detalle.id_producto, ventaForm.controls.id_lista_precio.value, detalle.id_producto_unidad) | currency: 'COP':'symbol':'1.0-0' }}</td>
                     <td>{{ getSubtotalDraft(detalle) | currency: 'COP':'symbol':'1.0-0' }}</td>
                     <td>
                       <button class="btn btn--danger" type="button" (click)="removerDetalleVenta($index)">Quitar</button>
@@ -619,8 +631,11 @@
           </label>
 
           <label class="field">
-            <span class="field__label">Precio</span>
+            <span class="field__label">Precio base</span>
             <input type="number" formControlName="precio" min="0.01" step="0.01" />
+            <small class="field__hint">
+              Registra aqui el precio de la unidad base del producto. En ventas el sistema lo convierte segun la unidad elegida.
+            </small>
           </label>
 
           <label class="field">

@@ -118,6 +118,13 @@
                     <option [value]="unidad.id_producto_unidad">{{ unidad.label }}</option>
                   }
                 </select>
+
+                @if (unidadesDisponiblesDetalle().length) {
+                  <small class="field__hint">
+                    El texto entre parentesis muestra cuantas unidades base representa la unidad seleccionada.
+                  </small>
+                }
+
                 @if (!unidadesDisponiblesDetalle().length) {
                   <small class="field__hint">
                     El producto seleccionado no tiene unidades activas disponibles.
@@ -128,6 +135,14 @@
               <label class="field">
                 <span class="field__label">Cantidad solicitada</span>
                 <input type="number" formControlName="cantidad_solicitada" min="0.01" step="0.01" />
+              </label>
+
+              <label class="field">
+                <span class="field__label">Stock disponible en origen</span>
+                <input type="text" [value]="stockDisponibleDetalle()" readonly />
+                <small class="field__hint">
+                  El stock se muestra convertido a la unidad seleccionada arriba.
+                </small>
               </label>
 
               <button class="btn btn--ghost" type="button" (click)="agregarDetalleSolicitud()">Agregar detalle</button>
@@ -270,7 +285,7 @@
   }
 
   @if (activeSection() === 'gestion') {
-    <section class="catalog-layout">
+    <section class="catalog-layout catalog-layout--management">
       <article class="panel">
         <header class="panel__header">
           <div>
@@ -287,7 +302,7 @@
             </label>
 
             <div class="table-shell">
-              <table class="data-table">
+              <table class="data-table data-table--editable">
                 <thead>
                   <tr>
                     <th>Producto</th>
@@ -303,7 +318,14 @@
                       <td>{{ detalle.cantidad_solicitada | number: '1.0-2' }}</td>
                       <td>{{ detalle.stock_disponible | number: '1.0-2' }}</td>
                       <td>
-                        <input type="number" min="0" step="0.01" [value]="detalle.cantidad_aprobada" (input)="updateRevisionCantidad(detalle.id_detalle_transferencia, $any($event.target).value)" />
+                        <input
+                          class="table-control"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          [value]="detalle.cantidad_aprobada"
+                          (input)="updateRevisionCantidad(detalle.id_detalle_transferencia, $any($event.target).value)"
+                        />
                       </td>
                     </tr>
                   } @empty {
@@ -315,11 +337,13 @@
               </table>
             </div>
 
-            <div class="form-actions">
-              <button class="btn btn--primary" type="button" [disabled]="submittingRevision()" (click)="aprobarTransferencia()">
+            <div class="form-actions form-actions--end">
+              <button class="btn btn--primary btn--action" type="button" [disabled]="submittingRevision()" (click)="aprobarTransferencia()">
                 {{ submittingRevision() ? 'Procesando...' : 'Aprobar / ajustar' }}
               </button>
-              <button class="btn btn--danger" type="button" [disabled]="submittingRevision()" (click)="rechazarTransferencia()">Rechazar</button>
+              <button class="btn btn--danger btn--action" type="button" [disabled]="submittingRevision()" (click)="rechazarTransferencia()">
+                Rechazar
+              </button>
             </div>
           </form>
         } @else {
@@ -337,31 +361,33 @@
 
         @if (selectedTransferencia()?.puede_enviar) {
           <form class="entry-form" [formGroup]="envioForm">
-            <label class="field">
-              <span class="field__label">Ruta logistica</span>
-              <select formControlName="id_ruta">
-                @for (ruta of rutas(); track ruta.id_ruta) {
-                  <option [value]="ruta.id_ruta">{{ ruta.nombre_ruta }}</option>
-                }
-              </select>
-            </label>
+            <div class="form-grid form-grid--management">
+              <label class="field">
+                <span class="field__label">Ruta logistica</span>
+                <select formControlName="id_ruta">
+                  @for (ruta of rutas(); track ruta.id_ruta) {
+                    <option [value]="ruta.id_ruta">{{ ruta.nombre_ruta }}</option>
+                  }
+                </select>
+              </label>
 
-            <label class="field">
-              <span class="field__label">Transportista</span>
-              <select formControlName="id_transportista">
-                @for (transportista of transportistasActivos(); track transportista.id_transportista) {
-                  <option [value]="transportista.id_transportista">{{ transportista.nombre }}</option>
-                }
-              </select>
-            </label>
+              <label class="field">
+                <span class="field__label">Transportista</span>
+                <select formControlName="id_transportista">
+                  @for (transportista of transportistasActivos(); track transportista.id_transportista) {
+                    <option [value]="transportista.id_transportista">{{ transportista.nombre }}</option>
+                  }
+                </select>
+              </label>
 
-            <label class="field">
-              <span class="field__label">Fecha estimada de llegada</span>
-              <input type="datetime-local" formControlName="fecha_estimada_llegada" />
-            </label>
+              <label class="field field--full">
+                <span class="field__label">Fecha estimada de llegada</span>
+                <input type="datetime-local" formControlName="fecha_estimada_llegada" />
+              </label>
+            </div>
 
-            <div class="form-actions">
-              <button class="btn btn--primary" type="button" [disabled]="submittingEnvio()" (click)="registrarEnvio()">
+            <div class="form-actions form-actions--end">
+              <button class="btn btn--primary btn--action" type="button" [disabled]="submittingEnvio()" (click)="registrarEnvio()">
                 {{ submittingEnvio() ? 'Registrando...' : 'Registrar envio' }}
               </button>
             </div>
@@ -389,7 +415,7 @@
             </label>
 
             <div class="table-shell">
-              <table class="data-table">
+              <table class="data-table data-table--editable">
                 <thead>
                   <tr>
                     <th>Producto</th>
@@ -406,11 +432,22 @@
                       <td>{{ detalle.producto }}</td>
                       <td>{{ detalle.cantidad_aprobada | number: '1.0-2' }}</td>
                       <td>
-                        <input type="number" min="0" step="0.01" [value]="detalle.cantidad_recibida" (input)="updateRecepcionCantidad(detalle.id_detalle_transferencia, $any($event.target).value)" />
+                        <input
+                          class="table-control"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          [value]="detalle.cantidad_recibida"
+                          (input)="updateRecepcionCantidad(detalle.id_detalle_transferencia, $any($event.target).value)"
+                        />
                       </td>
                       <td>{{ getFaltanteRecepcion(detalle) | number: '1.0-2' }}</td>
                       <td>
-                        <select [value]="detalle.tratamiento" (change)="updateRecepcionTratamiento(detalle.id_detalle_transferencia, $any($event.target).value)">
+                        <select
+                          class="table-control"
+                          [value]="detalle.tratamiento"
+                          (change)="updateRecepcionTratamiento(detalle.id_detalle_transferencia, $any($event.target).value)"
+                        >
                           <option value="">Sin diferencia</option>
                           <option value="REENVIO">Reenvio</option>
                           <option value="AJUSTE">Ajuste</option>
@@ -418,7 +455,13 @@
                         </select>
                       </td>
                       <td>
-                        <input type="text" [value]="detalle.descripcion" (input)="updateRecepcionDescripcion(detalle.id_detalle_transferencia, $any($event.target).value)" placeholder="Describe la incidencia" />
+                        <input
+                          class="table-control table-control--wide"
+                          type="text"
+                          [value]="detalle.descripcion"
+                          (input)="updateRecepcionDescripcion(detalle.id_detalle_transferencia, $any($event.target).value)"
+                          placeholder="Describe la incidencia"
+                        />
                       </td>
                     </tr>
                   } @empty {
@@ -430,8 +473,8 @@
               </table>
             </div>
 
-            <div class="form-actions">
-              <button class="btn btn--primary" type="button" [disabled]="submittingRecepcion()" (click)="confirmarRecepcion()">
+            <div class="form-actions form-actions--end">
+              <button class="btn btn--primary btn--action" type="button" [disabled]="submittingRecepcion()" (click)="confirmarRecepcion()">
                 {{ submittingRecepcion() ? 'Confirmando...' : 'Confirmar recepcion' }}
               </button>
             </div>

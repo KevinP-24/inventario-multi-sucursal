@@ -246,6 +246,71 @@
   gap: 12px;
 }
 
+.catalog-layout--management {
+  align-items: stretch;
+}
+
+.catalog-layout--management > .panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-grid--management {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+}
+
+.field--full {
+  grid-column: 1 / -1;
+}
+
+.form-actions--end {
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.btn--action {
+  min-width: 170px;
+}
+
+.data-table--editable td {
+  vertical-align: middle;
+}
+
+.table-control {
+  width: 100%;
+  min-width: 120px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid rgba(24, 40, 72, 0.14);
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 12px;
+  font: inherit;
+  color: inherit;
+  box-sizing: border-box;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.table-control:focus {
+  outline: none;
+  border-color: rgba(213, 148, 37, 0.48);
+  box-shadow: 0 0 0 3px rgba(213, 148, 37, 0.12);
+}
+
+.table-control--wide {
+  min-width: 220px;
+}
+
+.panel__empty {
+  min-height: 84px;
+  display: flex;
+  align-items: center;
+}
+
 .btn {
   border: 1px solid transparent;
   border-radius: 16px;
@@ -326,10 +391,20 @@
   .transferencias-kpis,
   .catalog-layout,
   .form-grid,
+  .form-grid--management,
   .detail-builder__grid,
   .filters-form,
   .selected-card__stats {
     grid-template-columns: 1fr;
+  }
+
+  .field--full {
+    grid-column: auto;
+  }
+
+  .table-control,
+  .table-control--wide {
+    min-width: 100%;
   }
 
   .panel,

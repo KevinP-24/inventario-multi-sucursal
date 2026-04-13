@@ -131,6 +131,13 @@
                     <option [value]="unidad.id_producto_unidad">{{ unidad.label }}</option>
                   }
                 </select>
+
+                @if (unidadesDisponiblesDetalle().length) {
+                  <small class="field__hint">
+                    El texto entre parentesis muestra cuantas unidades base representa la unidad seleccionada.
+                  </small>
+                }
+
                 @if (!unidadesDisponiblesDetalle().length) {
                   <small class="field__hint">
                     El producto seleccionado no tiene unidades activas disponibles.
@@ -147,8 +154,16 @@
                 <span class="field__label">Precio unitario de compra</span>
                 <input type="number" formControlName="precio_unitario" min="0.01" step="0.01" />
                 <small class="field__hint">
-                  Se sugiere según la última compra recibida del proveedor para este producto, pero puedes cambiarlo.
+                  El precio unitario corresponde a la unidad seleccionada arriba. Ej.: si eliges Caja (12 und), escribe el precio por caja, no por unidad base.
                 </small>
+
+                @if (costoBaseEquivalenteDetalle() !== null) {
+                  <small class="field__hint">
+                    Equivale a
+                    {{ (costoBaseEquivalenteDetalle() ?? 0) | currency: 'COP':'symbol':'1.0-2' }}
+                    por {{ getSimboloUnidadBase(detalleForm.controls.id_producto_unidad.value) }} base.
+                  </small>
+                }
               </label>
 
               <label class="field">
@@ -181,7 +196,14 @@
                     <td>{{ getProductoNombre(detalle.id_producto) }}</td>
                     <td>{{ getUnidadNombre(detalle.id_producto_unidad) }}</td>
                     <td>{{ detalle.cantidad | number: '1.0-2' }}</td>
-                    <td>{{ detalle.precio_unitario | currency: 'COP':'symbol':'1.0-0' }}</td>
+                    <td>
+                      {{ detalle.precio_unitario | currency: 'COP':'symbol':'1.0-0' }}
+                      <small>
+                        Base:
+                        {{ (getCostoBaseDetalleDraft(detalle) ?? 0) | currency: 'COP':'symbol':'1.0-2' }}
+                        / {{ getSimboloUnidadBase(detalle.id_producto_unidad) }}
+                      </small>
+                    </td>
                     <td>{{ (detalle.descuento || 0) | currency: 'COP':'symbol':'1.0-0' }}</td>
                     <td>
                       {{
@@ -297,7 +319,9 @@
                 <small>{{ detalle.codigo_producto }} - {{ detalle.unidad }}</small>
                 <small>
                   Cantidad: {{ detalle.cantidad | number: '1.0-2' }} -
-                  Precio: {{ detalle.precio_unitario | currency: 'COP':'symbol':'1.0-0' }}
+                  Precio: {{ detalle.precio_unitario | currency: 'COP':'symbol':'1.0-0' }} -
+                  Base: {{ (getCostoBaseDetalleDraft(detalle) ?? 0) | currency: 'COP':'symbol':'1.0-2' }}
+                  / {{ getSimboloUnidadBase(detalle.id_producto_unidad) }}
                 </small>
               </article>
             } @empty {

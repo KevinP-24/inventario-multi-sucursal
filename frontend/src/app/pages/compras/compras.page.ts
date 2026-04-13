@@ -146,7 +146,7 @@ export class ComprasPage implements OnInit {
       })
       .map(item => ({
         id_producto_unidad: Number(item.id_producto_unidad),
-        label: `${item.unidad_medida?.nombre ?? 'Unidad'} (${item.unidad_medida?.simbolo ?? '-'})`
+        label: this.buildUnidadLabel(item)
       }));
   }
 
@@ -405,11 +405,13 @@ export class ComprasPage implements OnInit {
   crearOrdenCompra(): void {
     if (this.ordenForm.invalid) {
       this.ordenForm.markAllAsTouched();
+      void this.uiAlerts.warning('Completa los datos obligatorios de la orden de compra.');
       return;
     }
 
     if (!this.draftDetalles().length) {
-      this.errorMessage.set('Agrega al menos un producto a la orden de compra.');
+      this.errorMessage.set('');
+      void this.uiAlerts.warning('Agrega al menos un producto a la orden de compra.');
       return;
     }
 
@@ -434,19 +436,34 @@ export class ComprasPage implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.successMessage.set('Orden de compra creada correctamente.');
+          this.successMessage.set('');
+          void this.uiAlerts.successToast('Orden de compra creada correctamente.');
           this.resetOrdenForm();
           this.cargarVista();
           this.activeSection.set('ordenes');
         },
-        error: () => {
-          this.errorMessage.set('No se pudo crear la orden de compra.');
+        error: (error: HttpErrorResponse) => {
+          this.errorMessage.set('');
+          void this.uiAlerts.error(
+            this.resolveApiError(error, 'No se pudo crear la orden de compra.')
+          );
         }
       });
   }
 
-  recibirOrdenCompra(orden: OrdenCompraVm): void {
+  async recibirOrdenCompra(orden: OrdenCompraVm): Promise<void> {
     if (!orden.puede_recibir) {
+      return;
+    }
+
+    const confirmed = await this.uiAlerts.confirm({
+      title: 'Confirmar recepcion',
+      text: `Se recibira la orden de compra #${orden.id_orden_compra} y se actualizara el inventario.`,
+      icon: 'warning',
+      confirmButtonText: 'Si, confirmar'
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -464,30 +481,56 @@ export class ComprasPage implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.successMessage.set('Recepcion confirmada y stock actualizado correctamente.');
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
+            `Recepcion confirmada para la orden #${orden.id_orden_compra}.`
+          );
           this.cargarVista();
         },
-        error: () => {
-          this.errorMessage.set('No se pudo confirmar la recepcion de la orden.');
+        error: (error: HttpErrorResponse) => {
+          this.errorMessage.set('');
+          void this.uiAlerts.error(
+            this.resolveApiError(error, 'No se pudo confirmar la recepcion de la orden.')
+          );
         }
       });
   }
 
-  anularOrdenCompra(orden: OrdenCompraVm): void {
+  async anularOrdenCompra(orden: OrdenCompraVm): Promise<void> {
     if (!orden.puede_anular) {
       return;
     }
+
+    const confirmed = await this.uiAlerts.confirm({
+      title: 'Anular orden de compra',
+      text: `La orden #${orden.id_orden_compra} se marcara como anulada.`,
+      icon: 'warning',
+      confirmButtonText: 'Si, anular'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.errorMessage.set('');
+    this.successMessage.set('');
 
     this.comprasApi.ordenesCompra
       .anularOrdenCompra(orden.id_orden_compra)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.successMessage.set('Orden de compra anulada correctamente.');
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
+            `Orden de compra #${orden.id_orden_compra} anulada correctamente.`
+          );
           this.cargarVista();
         },
-        error: () => {
-          this.errorMessage.set('No se pudo anular la orden de compra.');
+        error: (error: HttpErrorResponse) => {
+          this.errorMessage.set('');
+          void this.uiAlerts.error(
+            this.resolveApiError(error, 'No se pudo anular la orden de compra.')
+          );
         }
       });
   }
@@ -799,10 +842,7 @@ export class ComprasPage implements OnInit {
         ...item,
         producto: producto?.nombre ?? `Producto #${item.id_producto}`,
         codigo_producto: producto?.codigo ?? `PRD-${item.id_producto}`,
-        unidad:
-          unidad?.unidad_medida?.nombre ??
-          unidad?.unidad_medida?.simbolo ??
-          `Unidad #${item.id_producto_unidad}`
+        unidad: unidad ? this.buildUnidadLabel(unidad) : `Unidad #${item.id_producto_unidad}`
       };
     });
   }
@@ -815,11 +855,97 @@ export class ComprasPage implements OnInit {
   }
 
   protected getUnidadNombre(idProductoUnidad: number): string {
+    const unidad = this.productoUnidadesActivas().find(
+      item => Number(item.id_producto_unidad) === Number(idProductoUnidad)
+    );
+
+    return unidad ? this.buildUnidadLabel(unidad) : `Unidad #${idProductoUnidad}`;
+  }
+
+  private buildUnidadLabel(unidad: ProductoUnidadDto): string {
+    const nombre = unidad.unidad_medida?.nombre?.trim() || 'Unidad';
+    const simboloPropio = unidad.unidad_medida?.simbolo?.trim() || 'und';
+    const factor = Number(unidad.factor_conversion ?? 1);
+
+    const unidadBase = this.productoUnidadesActivas().find(
+      item =>
+        Number(item.id_producto) === Number(unidad.id_producto) &&
+        Boolean(item.es_base)
+    );
+
+    const simboloBase = unidadBase?.unidad_medida?.simbolo?.trim() || simboloPropio || 'und';
+    const factorTexto = this.formatFactor(factor);
+
+    if (unidad.es_base) {
+      return `${nombre} base (1 ${simboloBase})`;
+    }
+
+    return `${nombre} (${factorTexto} ${simboloBase})`;
+  }
+
+  private formatFactor(value: number): string {
+    const normalized = Number(value);
+
+    if (!Number.isFinite(normalized) || normalized <= 0) {
+      return '1';
+    }
+
+    return Number.isInteger(normalized)
+      ? String(normalized)
+      : normalized.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+
+  private getProductoUnidadById(idProductoUnidad: number): ProductoUnidadDto | null {
     return (
       this.productoUnidadesActivas().find(
         item => Number(item.id_producto_unidad) === Number(idProductoUnidad)
-      )?.unidad_medida?.nombre ?? `Unidad #${idProductoUnidad}`
+      ) ?? null
     );
+  }
+
+  protected costoBaseEquivalenteDetalle(): number | null {
+    const idProductoUnidad = Number(this.detalleForm.controls.id_producto_unidad.value || 0);
+    const precioUnitario = Number(this.detalleForm.controls.precio_unitario.value || 0);
+
+    if (!idProductoUnidad || !precioUnitario) {
+      return null;
+    }
+
+    const unidad = this.getProductoUnidadById(idProductoUnidad);
+    const factor = Number(unidad?.factor_conversion || 1);
+
+    if (!factor || factor <= 0) {
+      return null;
+    }
+
+    return precioUnitario / factor;
+  }
+
+  protected getCostoBaseDetalleDraft(detalle: CrearDetalleOrdenCompraDto): number | null {
+    const unidad = this.getProductoUnidadById(detalle.id_producto_unidad);
+    const factor = Number(unidad?.factor_conversion || 1);
+
+    if (!factor || factor <= 0) {
+      return null;
+    }
+
+    return Number(detalle.precio_unitario) / factor;
+  }
+
+  protected getSimboloUnidadBase(idProductoUnidad: number): string {
+    const unidad = this.getProductoUnidadById(idProductoUnidad);
+    if (!unidad) {
+      return 'und';
+    }
+
+    const unidadBase = this.productoUnidadesActivas().find(
+      item =>
+        Number(item.id_producto) === Number(unidad.id_producto) &&
+        Boolean(item.es_base)
+    );
+
+    return unidadBase?.unidad_medida?.simbolo?.trim() || 'und';
   }
 
   protected getSucursalNombre(idSucursal: number | null | undefined): string {
