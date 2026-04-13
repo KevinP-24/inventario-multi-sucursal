@@ -30,9 +30,9 @@ from app.modules.ventas.venta.schema import (
 )
 
 
-def listar_ventas_para_respuesta():
+def listar_ventas_para_respuesta(filtros=None):
     """Consulta ventas y las deja listas para API."""
-    ventas = consultar_todas_las_ventas_en_bd()
+    ventas = consultar_todas_las_ventas_en_bd(filtros)
     return [convertir_venta_a_respuesta(venta) for venta in ventas]
 
 

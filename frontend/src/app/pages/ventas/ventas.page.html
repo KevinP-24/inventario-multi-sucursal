@@ -669,12 +669,16 @@
 
         <label class="field">
           <span class="field__label">Sucursal</span>
-          <select formControlName="id_sucursal">
-            <option [value]="0">Todas</option>
-            @for (sucursal of sucursalesActivas(); track sucursal.id_sucursal) {
-              <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
-            }
-          </select>
+          @if (hasFixedSucursal()) {
+            <input type="text" [value]="getSucursalNombre(historialForm.controls.id_sucursal.value)" readonly />
+          } @else {
+            <select formControlName="id_sucursal">
+              <option [value]="0">Todas</option>
+              @for (sucursal of sucursalesActivas(); track sucursal.id_sucursal) {
+                <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
+              }
+            </select>
+          }
         </label>
 
         <label class="field">
@@ -733,11 +737,16 @@
       </article>
 
       <article class="panel">
-        <header class="panel__header">
+        <header class="panel__header" style="display: flex; justify-content: space-between; align-items: flex-start;">
           <div>
             <h2>Detalle historico</h2>
             <p>Profundiza el comprobante para revisar productos vendidos y trazabilidad.</p>
           </div>
+          @if (selectedVenta()) {
+            <button class="btn btn--primary" type="button" (click)="descargarPdf()">
+              Descargar PDF
+            </button>
+          }
         </header>
 
         @if (selectedVenta(); as venta) {

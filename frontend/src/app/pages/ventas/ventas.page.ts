@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { generarComprobanteVentaPdf } from '../../core/utils/pdf-comprobante.util';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -373,7 +374,9 @@ protected precioActualDetalle(): number | null {
     this.errorMessage.set('');
 
     forkJoin({
-      ventasResponse: this.ventasApi.venta.listarVentas(),
+      ventasResponse: this.ventasApi.venta.listarVentas({ 
+        id_sucursal: this.resolveSucursalOperadorId() ?? undefined 
+      }),
       clientesResponse: this.ventasApi.clientes.listarClientes(),
       tiposDocumentoResponse: this.ventasApi.tiposDocumento.listarTiposDocumento(),
       listasPrecioResponse: this.inventarioApi.listasPrecio.listarListasPrecio(),
@@ -1507,5 +1510,16 @@ private getStockDisponibleEnUnidad(
     }
 
     return null;
+  }
+
+  descargarPdf(): void {
+    const venta = this.selectedVenta();
+    const detalles = this.detallesVentaSeleccionada();
+    if (!venta) return;
+    
+    const responsable = this.getResponsableVenta(venta);
+    const sucursal = this.getSucursalNombre(venta.id_sucursal);
+    
+    generarComprobanteVentaPdf(venta, detalles, sucursal, responsable);
   }
 }
