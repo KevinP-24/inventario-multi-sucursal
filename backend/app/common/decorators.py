@@ -64,6 +64,7 @@ PERMISOS_POR_ROL = {
         "unidades_medida",
         "ventas",
         "sucursales",
+        "ordenes_compra"
     },
 }
 

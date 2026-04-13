@@ -52,7 +52,9 @@ export const routes: Routes = [
       },
       {
         path: 'compras',
-        canActivate: [roleGuard([UserRoleDto.ADMIN_SUCURSAL])],
+        canActivate: [
+          roleGuard([UserRoleDto.ADMIN_SUCURSAL, UserRoleDto.OPERARIO_INVENTARIO])
+        ],
         loadComponent: () =>
           import('./pages/compras/compras.page').then((module) => module.ComprasPage)
       },
