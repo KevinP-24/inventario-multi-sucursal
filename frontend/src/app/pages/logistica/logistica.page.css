@@ -21,9 +21,9 @@
 }
 
 .tab-button--active {
-  background: rgba(14, 110, 136, 0.12);
-  border-color: rgba(14, 110, 136, 0.28);
-  color: #0e6e88;
+  background: rgba(213, 148, 37, 0.12);
+  border-color: rgba(213, 148, 37, 0.28);
+  color: var(--ms-gold-700, #9a5c11);
 }
 
 .feedback {
@@ -33,13 +33,13 @@
 }
 
 .feedback--error {
-  background: rgba(194, 45, 72, 0.1);
-  color: #8f1f34;
+  background: rgba(179, 61, 49, 0.1);
+  color: var(--color-danger, #b33d31);
 }
 
 .feedback--success {
-  background: rgba(25, 135, 84, 0.1);
-  color: #15613d;
+  background: rgba(47, 150, 85, 0.12);
+  color: var(--ms-green-700, #0f5f54);
 }
 
 .logistica-kpis,
@@ -126,9 +126,10 @@
   gap: 8px;
 }
 
-.field__label {
-  font-weight: 700;
-  color: var(--color-text);
+.field__hint {
+  color: var(--color-text-muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
 }
 
 .field input,
@@ -178,12 +179,33 @@
 }
 
 .data-table__row--active {
-  background: rgba(14, 110, 136, 0.08);
+  background: rgba(213, 148, 37, 0.08);
 }
 
 .empty-cell {
   text-align: center;
   color: var(--color-text-muted);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.status-pill--ok {
+  background: rgba(47, 150, 85, 0.12);
+  color: var(--ms-green-700, #0f5f54);
+}
+
+.status-pill--danger {
+  background: rgba(179, 61, 49, 0.12);
+  color: var(--color-danger, #b33d31);
 }
 
 .selected-card {
@@ -222,6 +244,65 @@
   gap: 12px;
 }
 
+.actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.actions-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ms-ink-700, #4b5a68);
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease;
+  flex-shrink: 0;
+}
+
+.icon-button:hover {
+  background: var(--ms-sand-200, #f4f0e7);
+  border-color: var(--color-border-strong);
+}
+
+.icon-button:active {
+  transform: scale(0.94);
+}
+
+.icon-button--edit:hover {
+  background: rgba(213, 148, 37, 0.1);
+  border-color: rgba(213, 148, 37, 0.3);
+  color: var(--ms-gold-700, #9a5c11);
+}
+
+.icon-button--deactivate:hover {
+  background: rgba(179, 61, 49, 0.08);
+  border-color: rgba(179, 61, 49, 0.22);
+  color: var(--color-danger, #b33d31);
+}
+
+.icon-button--activate:hover {
+  background: rgba(47, 150, 85, 0.1);
+  border-color: rgba(47, 150, 85, 0.28);
+  color: var(--ms-green-500, #2f9655);
+}
+
 .btn {
   border: 1px solid transparent;
   border-radius: 16px;
@@ -233,8 +314,9 @@
 }
 
 .btn--primary {
-  background: #0e6e88;
-  color: white;
+  background: var(--gradient-button-primary);
+  color: var(--ms-white, #ffffff);
+  box-shadow: 0 12px 24px rgba(154, 92, 17, 0.22);
 }
 
 .btn--ghost {
@@ -244,8 +326,9 @@
 }
 
 .btn--danger {
-  background: rgba(194, 45, 72, 0.12);
-  color: #8f1f34;
+  background: rgba(179, 61, 49, 0.12);
+  color: var(--color-danger, #b33d31);
+  border-color: rgba(179, 61, 49, 0.16);
 }
 
 @media (max-width: 1100px) {

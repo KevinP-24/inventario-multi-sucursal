@@ -11,15 +11,20 @@
 }
 
 .dashboard-feedback--error {
-  background: rgba(200, 62, 62, 0.12);
-  color: #8f2525;
+  background: rgba(179, 61, 49, 0.1);
+  color: var(--color-danger, #b33d31);
+}
+
+.dashboard-feedback--success {
+  background: rgba(47, 150, 85, 0.12);
+  color: var(--ms-green-700, #0f5f54);
 }
 
 .dashboard-panel {
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(24, 40, 72, 0.08);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: var(--shadow-soft);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 18px 34px rgba(27, 39, 66, 0.08);
   padding: 24px;
 }
 
@@ -37,7 +42,7 @@
 
 .dashboard-panel__eyebrow {
   margin: 0 0 8px;
-  color: var(--color-accent);
+  color: var(--ms-gold-700, #9a5c11);
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -68,18 +73,18 @@
 
 .panel-tag,
 .context-badge {
-  background: rgba(15, 118, 110, 0.12);
-  color: #0f6c64;
+  background: rgba(213, 148, 37, 0.12);
+  color: var(--ms-gold-700, #9a5c11);
 }
 
 .severity-pill {
-  background: rgba(245, 158, 11, 0.16);
-  color: #9a6200;
+  background: rgba(213, 148, 37, 0.14);
+  color: var(--ms-gold-700, #9a5c11);
 }
 
 .severity-pill.is-critical {
-  background: rgba(200, 62, 62, 0.14);
-  color: #8f2525;
+  background: rgba(179, 61, 49, 0.12);
+  color: var(--color-danger, #b33d31);
 }
 
 .dashboard-filters {
@@ -100,13 +105,21 @@
   color: var(--color-text-muted);
 }
 
+.dashboard-panel__header h2,
+.kpi-card strong,
+.insight-item strong,
+.shortcut-item strong {
+  color: var(--color-text);
+}
+
 .dashboard-field select {
   width: 100%;
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(24, 40, 72, 0.14);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.92);
   color: var(--color-text);
   font: inherit;
+  min-height: 48px;
   padding: 12px 14px;
 }
 
@@ -130,10 +143,10 @@
 }
 
 .kpi-card {
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(24, 40, 72, 0.08);
   border-radius: 24px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 248, 0.92));
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 18px 34px rgba(27, 39, 66, 0.08);
   padding: 22px;
 }
 
@@ -201,7 +214,7 @@
 .shortcut-item {
   display: grid;
   gap: 6px;
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(24, 40, 72, 0.08);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.88);
   padding: 16px 18px;
@@ -224,9 +237,10 @@
 }
 
 .shortcut-item:hover {
-  border-color: rgba(154, 92, 17, 0.24);
-  background: #fffdf8;
+  border-color: rgba(213, 148, 37, 0.28);
+  background: var(--ms-sand-100, #fffaf1);
   transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(154, 92, 17, 0.12);
 }
 
 @media (max-width: 1180px) {
@@ -246,7 +260,8 @@
     grid-template-columns: 1fr;
   }
 
-  .dashboard-panel {
+  .dashboard-panel,
+  .kpi-card {
     padding: 18px;
   }
 

@@ -212,8 +212,18 @@
                   <td>{{ ruta.prioridad || 'Sin prioridad' }}</td>
                   <td>{{ ruta.costo_estimado | currency: 'COP':'symbol':'1.0-0' }}</td>
                   <td>{{ ruta.tiempo_estimado || 'Sin estimado' }}</td>
-                  <td>
-                    <button class="btn btn--ghost" type="button" (click)="editarRuta(ruta)">Editar</button>
+                  <td class="actions-cell">
+                    <div class="actions-group">
+                      <button
+                        type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar ruta"
+                        aria-label="Editar ruta"
+                        (click)="editarRuta(ruta)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               } @empty {
@@ -297,12 +307,37 @@
                   <td>{{ transportista.identificacion }}</td>
                   <td>{{ transportista.nombre }}</td>
                   <td>{{ transportista.telefono || 'Sin telefono' }}</td>
-                  <td>{{ transportista.activo ? 'Activo' : 'Inactivo' }}</td>
                   <td>
-                    <div class="form-actions">
-                      <button class="btn btn--ghost" type="button" (click)="editarTransportista(transportista)">Editar</button>
-                      <button class="btn" [class.btn--danger]="transportista.activo" [class.btn--ghost]="!transportista.activo" type="button" (click)="toggleEstadoTransportista(transportista)">
-                        {{ transportista.activo ? 'Desactivar' : 'Activar' }}
+                  <span
+                    class="status-pill"
+                    [class.status-pill--ok]="transportista.activo"
+                    [class.status-pill--danger]="!transportista.activo"
+                  >
+                    {{ transportista.activo ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+                  <td class="actions-cell">
+                    <div class="actions-group">
+                      <button
+                        type="button"
+                        class="icon-button icon-button--edit"
+                        title="Editar transportista"
+                        aria-label="Editar transportista"
+                        (click)="editarTransportista(transportista)"
+                      >
+                        <fa-icon [icon]="faPenToSquare"></fa-icon>
+                      </button>
+
+                      <button
+                        type="button"
+                        class="icon-button"
+                        [class.icon-button--deactivate]="transportista.activo"
+                        [class.icon-button--activate]="!transportista.activo"
+                        [title]="transportista.activo ? 'Desactivar transportista' : 'Activar transportista'"
+                        [attr.aria-label]="transportista.activo ? 'Desactivar transportista' : 'Activar transportista'"
+                        (click)="toggleEstadoTransportista(transportista)"
+                      >
+                        <fa-icon [icon]="transportista.activo ? faToggleOn : faToggleOff"></fa-icon>
                       </button>
                     </div>
                   </td>

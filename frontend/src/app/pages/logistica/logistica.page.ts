@@ -12,6 +12,13 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize, forkJoin } from 'rxjs';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import {
+  faPenToSquare,
+  faToggleOff,
+  faToggleOn
+} from '@fortawesome/free-solid-svg-icons';
+import { UiAlertService } from '../../core/services/ui-alert.service';
 
 import { LogisticaApiService } from '../../core/services/logistica/logistica-api.service';
 import { GuardarRutaLogisticaDto, RutaLogisticaDto } from '../../core/services/logistica/dtos/ruta-logistica.dto';
@@ -54,7 +61,7 @@ interface CumplimientoLogisticoVm {
 @Component({
   selector: 'app-logistica-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PageHeaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, PageHeaderComponent, FontAwesomeModule],
   templateUrl: './logistica.page.html',
   styleUrl: './logistica.page.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -65,6 +72,11 @@ export class LogisticaPage implements OnInit {
   private readonly logisticaApi = inject(LogisticaApiService);
   private readonly transferenciasApi = inject(TransferenciasApiService);
   private readonly sucursalesApi = inject(SucursalesApiService);
+  private readonly uiAlerts = inject(UiAlertService);
+
+  protected readonly faPenToSquare = faPenToSquare;
+  protected readonly faToggleOn = faToggleOn;
+  protected readonly faToggleOff = faToggleOff;
 
   readonly activeSection = signal<LogisticaSection>('seguimiento');
   readonly loading = signal(false);
@@ -256,15 +268,20 @@ export class LogisticaPage implements OnInit {
 
   clasificarRutas(criterio: CriterioRutas): void {
     this.criterioRutas.set(criterio);
+    this.errorMessage.set('');
+
     this.logisticaApi.rutasLogistica
       .clasificarRutasLogistica(criterio)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
           this.rutasClasificadas.set(this.extractData<RutaLogisticaDto[]>(response));
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(`Rutas clasificadas por ${criterio}.`);
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(
+          this.successMessage.set('');
+          void this.uiAlerts.error(
             this.resolveApiError(error, 'No se pudo clasificar las rutas logisticas.')
           );
         }
@@ -311,7 +328,8 @@ export class LogisticaPage implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.successMessage.set(
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
             this.selectedRutaId()
               ? 'Ruta logistica actualizada correctamente.'
               : 'Ruta logistica creada correctamente.'
@@ -321,7 +339,8 @@ export class LogisticaPage implements OnInit {
           this.activeSection.set('rutas');
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(
+          this.errorMessage.set('');
+          void this.uiAlerts.error(
             this.resolveApiError(error, 'No se pudo guardar la ruta logistica.')
           );
         }
@@ -352,6 +371,7 @@ export class LogisticaPage implements OnInit {
     const actual =
       this.transportistas().find((item) => item.id_transportista === this.selectedTransportistaId()) ??
       null;
+
     const payload: GuardarTransportistaDto = {
       identificacion: value.identificacion.trim(),
       nombre: value.nombre.trim(),
@@ -370,7 +390,8 @@ export class LogisticaPage implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.successMessage.set(
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
             this.selectedTransportistaId()
               ? 'Transportista actualizado correctamente.'
               : 'Transportista creado correctamente.'
@@ -380,19 +401,33 @@ export class LogisticaPage implements OnInit {
           this.activeSection.set('transportistas');
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(
+          this.errorMessage.set('');
+          void this.uiAlerts.error(
             this.resolveApiError(error, 'No se pudo guardar el transportista.')
           );
         }
       });
   }
 
-  toggleEstadoTransportista(transportista: TransportistaDto): void {
+  async toggleEstadoTransportista(transportista: TransportistaDto): Promise<void> {
+    const nextActivo = !transportista.activo;
+
+    const confirmed = await this.uiAlerts.confirm({
+      title: `${nextActivo ? 'Activar' : 'Desactivar'} transportista`,
+      text: `Se actualizara el estado de "${transportista.nombre}".`,
+      icon: 'warning',
+      confirmButtonText: nextActivo ? 'Si, activar' : 'Si, desactivar'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     const payload: GuardarTransportistaDto = {
       identificacion: transportista.identificacion,
       nombre: transportista.nombre,
       telefono: transportista.telefono,
-      activo: !transportista.activo
+      activo: nextActivo
     };
 
     this.logisticaApi.transportistas
@@ -400,10 +435,11 @@ export class LogisticaPage implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.successMessage.set(
-            transportista.activo
-              ? 'Transportista desactivado correctamente.'
-              : 'Transportista activado correctamente.'
+          this.successMessage.set('');
+          void this.uiAlerts.successToast(
+            nextActivo
+              ? 'Transportista activado correctamente.'
+              : 'Transportista desactivado correctamente.'
           );
           if (this.selectedTransportistaId() === transportista.id_transportista) {
             this.resetTransportistaForm();
@@ -411,7 +447,8 @@ export class LogisticaPage implements OnInit {
           this.cargarVista();
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(
+          this.errorMessage.set('');
+          void this.uiAlerts.error(
             this.resolveApiError(error, 'No se pudo actualizar el transportista.')
           );
         }
@@ -435,9 +472,12 @@ export class LogisticaPage implements OnInit {
       .subscribe({
         next: (response) => {
           this.reporteCumplimiento.set(this.extractData<CumplimientoLogisticoVm[]>(response));
+          this.successMessage.set('');
+          void this.uiAlerts.successToast('Reporte logistico consultado correctamente.');
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(
+          this.successMessage.set('');
+          void this.uiAlerts.error(
             this.resolveApiError(error, 'No se pudo consultar el reporte logistico.')
           );
         }
