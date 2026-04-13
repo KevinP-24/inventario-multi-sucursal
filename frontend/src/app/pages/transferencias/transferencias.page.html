@@ -51,11 +51,11 @@
         <form class="entry-form" [formGroup]="transferForm" (ngSubmit)="crearTransferencia()">
           <div class="form-grid">
             <label class="field">
-              <span class="field__label">Sucursal origen</span>
+              <span class="field__label">Sucursal destino</span>
               @if (hasFixedSucursal()) {
-                <input type="text" [value]="getSucursalNombre(transferForm.controls.id_sucursal_origen.value)" readonly />
+                <input type="text" [value]="getSucursalNombre(transferForm.controls.id_sucursal_destino.value)" readonly />
               } @else {
-                <select formControlName="id_sucursal_origen">
+                <select formControlName="id_sucursal_destino">
                   @for (sucursal of sucursalesActivas(); track sucursal.id_sucursal) {
                     <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
                   }
@@ -64,12 +64,15 @@
             </label>
 
             <label class="field">
-              <span class="field__label">Sucursal destino</span>
-              <select formControlName="id_sucursal_destino">
-                @for (sucursal of sucursalesDestinoDisponibles(); track sucursal.id_sucursal) {
+              <span class="field__label">Sucursal origen</span>
+              <select formControlName="id_sucursal_origen">
+                @for (sucursal of sucursalesOrigenDisponibles(); track sucursal.id_sucursal) {
                   <option [value]="sucursal.id_sucursal">{{ sucursal.nombre }}</option>
                 }
               </select>
+              <small class="field__hint">
+                Selecciona la sucursal desde la cual se despachará el producto.
+              </small>
             </label>
 
             <label class="field">
@@ -99,19 +102,27 @@
               <label class="field">
                 <span class="field__label">Producto</span>
                 <select formControlName="id_producto">
-                  @for (producto of productosActivos(); track producto.id_producto) {
+                  @for (producto of productosDisponiblesSolicitud(); track producto.id_producto) {
                     <option [value]="producto.id_producto">{{ producto.nombre }} ({{ producto.codigo }})</option>
                   }
                 </select>
+                <small class="field__hint">
+                  Solo se muestran productos con stock disponible en la sucursal origen seleccionada.
+                </small>
               </label>
 
               <label class="field">
                 <span class="field__label">Unidad</span>
-                <select formControlName="id_producto_unidad">
+                <select formControlName="id_producto_unidad" [disabled]="!unidadesDisponiblesDetalle().length">
                   @for (unidad of unidadesDisponiblesDetalle(); track unidad.id_producto_unidad) {
                     <option [value]="unidad.id_producto_unidad">{{ unidad.label }}</option>
                   }
                 </select>
+                @if (!unidadesDisponiblesDetalle().length) {
+                  <small class="field__hint">
+                    El producto seleccionado no tiene unidades activas disponibles.
+                  </small>
+                }
               </label>
 
               <label class="field">

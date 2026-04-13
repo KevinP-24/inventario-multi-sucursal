@@ -63,6 +63,7 @@ PERMISOS_POR_ROL = {
         "transportistas",
         "unidades_medida",
         "ventas",
+        "sucursales",
     },
 }
 
@@ -129,6 +130,14 @@ def es_ruta_publica(endpoint, path):
 
 
 def rol_tiene_permiso(rol, blueprint):
-    """Valida permiso de acceso por blueprint."""
-    permisos = PERMISOS_POR_ROL.get(rol, set())
-    return "*" in permisos or blueprint in permisos
+    rol_normalizado = " ".join((rol or "").split())
+    blueprint_normalizado = (blueprint or "").strip()
+
+    permisos = PERMISOS_POR_ROL.get(rol_normalizado, set())
+
+    print("DEBUG rol:", repr(rol))
+    print("DEBUG rol_normalizado:", repr(rol_normalizado))
+    print("DEBUG blueprint:", repr(blueprint_normalizado))
+    print("DEBUG permisos:", permisos)
+
+    return "*" in permisos or blueprint_normalizado in permisos

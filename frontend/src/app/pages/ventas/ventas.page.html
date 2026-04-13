@@ -138,7 +138,7 @@
 
               <label class="field">
                 <span class="field__label">Stock disponible</span>
-                <input type="text" [value]="stockDisponibleDetalle() ?? 'Sin inventario'" readonly />
+                <input type="text" [value]="stockDisponibleDetalle() || 'Sin inventario'" readonly />
               </label>
 
               <button class="btn btn--ghost" type="button" (click)="agregarDetalleVenta()">Agregar detalle</button>

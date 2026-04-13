@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { finalize, forkJoin } from 'rxjs';
+import { catchError, finalize, forkJoin, of } from 'rxjs';
 
 import { AuthSessionService } from '../../core/services/auth/auth-session.service';
 import { InventarioApiService } from '../../core/services/inventario/inventario-api.service';
@@ -42,6 +42,7 @@ import {
   TransferenciaDto
 } from '../../core/services/transferencias/dtos/transferencia.dto';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { UiAlertService } from '../../core/services/ui-alert.service';
 
 type TransferenciasSection = 'solicitudes' | 'gestion' | 'historial';
 
@@ -94,6 +95,7 @@ export class TransferenciasPage implements OnInit {
   private readonly rutasApi = inject(RutasLogisticaApiService);
   private readonly transportistasApi = inject(TransportistasApiService);
   private readonly authSession = inject(AuthSessionService);
+  private readonly uiAlerts = inject(UiAlertService);
 
   readonly activeSection = signal<TransferenciasSection>('solicitudes');
   readonly loading = signal(false);
@@ -125,6 +127,7 @@ export class TransferenciasPage implements OnInit {
   readonly usuarioId = signal<number | null>(this.resolveUsuarioId());
   readonly usuarioNombre = signal(this.resolveUsuarioNombre());
   readonly sucursalId = signal<number | null>(this.resolveSucursalOperadorId());
+  readonly sucursalNombre = signal(this.resolveSucursalOperadorNombre());
   readonly hasFixedSucursal = computed(() => this.sucursalId() !== null);
   readonly roleCode = computed(() => this.resolveRoleCode());
   readonly isAdminSucursal = computed(() => this.roleCode() === 'ADMIN_SUCURSAL');
@@ -139,24 +142,88 @@ export class TransferenciasPage implements OnInit {
   readonly transportistasActivos = computed(() =>
     this.transportistas().filter((item) => item.activo)
   );
-  readonly sucursalesDestinoDisponibles = computed(() =>
-    this.sucursalesActivas().filter(
-      (item) => item.id_sucursal !== Number(this.transferForm.controls.id_sucursal_origen.value || 0)
-    )
-  );
-  readonly unidadesDisponiblesDetalle = computed(() => {
+
+  protected sucursalesOrigenDisponibles(): Array<{
+    id_sucursal: number;
+    nombre: string;
+  }> {
+    const idDestino = Number(this.transferForm.controls.id_sucursal_destino.value || 0);
+
+    const desdeCatalogo = this.sucursalesActivas()
+      .filter((item) => Number(item.id_sucursal) !== idDestino)
+      .map((item) => ({
+        id_sucursal: Number(item.id_sucursal),
+        nombre: item.nombre
+      }));
+
+    const idsCatalogo = new Set(desdeCatalogo.map((item) => item.id_sucursal));
+
+    const desdeInventario = Array.from(
+      new Set(
+        this.inventarios()
+          .map((item) => Number(item.id_sucursal))
+          .filter((id) => id > 0 && id !== idDestino && !idsCatalogo.has(id))
+      )
+    ).map((id) => ({
+      id_sucursal: id,
+      nombre: this.getSucursalNombre(id)
+    }));
+
+    return [...desdeCatalogo, ...desdeInventario];
+  }
+
+  protected unidadesDisponiblesDetalle(): Array<{
+    id_producto_unidad: number;
+    label: string;
+  }> {
     const idProducto = Number(this.detalleForm.controls.id_producto.value || 0);
+
     if (!idProducto) {
       return [];
     }
 
     return this.productoUnidadesActivas()
-      .filter((item) => item.id_producto === idProducto)
+      .filter((item) => Number(item.id_producto) === idProducto)
+      .sort((a, b) => {
+        if (a.es_base === b.es_base) {
+          return Number(a.id_producto_unidad) - Number(b.id_producto_unidad);
+        }
+
+        return a.es_base ? -1 : 1;
+      })
       .map((item) => ({
-        id_producto_unidad: item.id_producto_unidad,
+        id_producto_unidad: Number(item.id_producto_unidad),
         label: `${item.unidad_medida?.nombre ?? 'Unidad'} (${item.unidad_medida?.simbolo ?? '-'})`
       }));
-  });
+  }
+
+  protected productosDisponiblesSolicitud(): ProductoDto[] {
+    const idOrigen = Number(this.transferForm.controls.id_sucursal_origen.value || 0);
+
+    if (!idOrigen) {
+      return [];
+    }
+
+    const productosConStock = new Set(
+      this.inventarios()
+        .filter(
+          (item) =>
+            Number(item.id_sucursal) === idOrigen &&
+            Number(item.cantidad_actual) > 0
+        )
+        .map((item) => Number(item.id_producto))
+    );
+
+    const productosConUnidad = new Set(
+      this.productoUnidadesActivas().map((item) => Number(item.id_producto))
+    );
+
+    return this.productosActivos().filter(
+      (item) =>
+        productosConStock.has(Number(item.id_producto)) &&
+        productosConUnidad.has(Number(item.id_producto))
+    );
+  }
 
   readonly transferenciasVm = computed<TransferenciaVm[]>(() =>
     this.transferencias().map((item) => ({
@@ -200,8 +267,8 @@ export class TransferenciasPage implements OnInit {
   );
 
   readonly transferForm = this.fb.nonNullable.group({
-    id_sucursal_origen: [this.resolveSucursalOperadorId() ?? 0, [Validators.required, Validators.min(1)]],
-    id_sucursal_destino: [0, [Validators.required, Validators.min(1)]],
+    id_sucursal_origen: [0, [Validators.required, Validators.min(1)]],
+    id_sucursal_destino: [this.resolveSucursalOperadorId() ?? 0, [Validators.required, Validators.min(1)]],
     prioridad: ['NORMAL' as PrioridadTransferenciaDto, [Validators.required]],
     observacion: ['']
   });
@@ -242,13 +309,18 @@ export class TransferenciasPage implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((idProducto) => {
         const unidades = this.productoUnidadesActivas().filter(
-          (item) => item.id_producto === Number(idProducto || 0)
+          (item) => Number(item.id_producto) === Number(idProducto || 0)
         );
+
         this.detalleForm.controls.id_producto_unidad.setValue(
-          unidades[0]?.id_producto_unidad ?? 0,
+          Number(unidades[0]?.id_producto_unidad ?? 0),
           { emitEvent: false }
         );
       });
+
+    this.transferForm.controls.id_sucursal_origen.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.sincronizarDetalleSolicitud());
   }
 
   seleccionarSeccion(section: TransferenciasSection): void {
@@ -266,7 +338,9 @@ export class TransferenciasPage implements OnInit {
       estadosResponse: this.transferenciasApi.estadosTransferencia.listarEstadosTransferencia(),
       productosResponse: this.inventarioApi.productos.listarProductos(),
       productoUnidadesResponse: this.inventarioApi.productoUnidades.listarProductoUnidades(),
-      sucursalesResponse: this.sucursalesApi.listarSucursales(),
+      sucursalesResponse: this.sucursalesApi
+      .listarSucursales()
+      .pipe(catchError(() => of([] as SucursalDto[]))),
       inventariosResponse: this.inventarioApi.inventarioSucursal.listarInventarioSucursal(),
       rutasResponse: this.rutasApi.listarRutasLogistica(),
       transportistasResponse: this.transportistasApi.listarTransportistas()
@@ -353,6 +427,8 @@ export class TransferenciasPage implements OnInit {
   agregarDetalleSolicitud(): void {
     if (this.detalleForm.invalid) {
       this.detalleForm.markAllAsTouched();
+      this.errorMessage.set('');
+      void this.uiAlerts.warning('Completa producto, unidad y cantidad para agregar el detalle.');
       return;
     }
 
@@ -371,20 +447,27 @@ export class TransferenciasPage implements OnInit {
     this.draftDetalles.update((items) => items.filter((_, itemIndex) => itemIndex !== index));
   }
 
-  crearTransferencia(): void {
+  async crearTransferencia(): Promise<void> {
     if (this.transferForm.invalid) {
       this.transferForm.markAllAsTouched();
       return;
     }
 
     if (!this.draftDetalles().length) {
-      this.errorMessage.set('Agrega al menos un producto a la solicitud de transferencia.');
+      void this.uiAlerts.warning('Agrega al menos un producto a la solicitud de transferencia.');
       return;
     }
 
+    const confirmed = await this.uiAlerts.confirm({
+      title: 'Crear solicitud',
+      text: '¿Confirmas la creacion de esta solicitud de transferencia?',
+      icon: 'question',
+      confirmButtonText: 'Si, crear'
+    });
+
+    if (!confirmed) return;
+
     this.submittingTransferencia.set(true);
-    this.errorMessage.set('');
-    this.successMessage.set('');
 
     const value = this.transferForm.getRawValue();
     const payload: CrearTransferenciaDto = {
@@ -405,25 +488,37 @@ export class TransferenciasPage implements OnInit {
       .subscribe({
         next: (response) => {
           const transferencia = this.extractData<TransferenciaDto>(response);
-          this.successMessage.set(
+          void this.uiAlerts.successToast(
             `Transferencia #${transferencia.id_transferencia} creada correctamente.`
           );
           this.resetTransferenciaForm();
           this.cargarVista();
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(
-            this.resolveApiError(error, 'No se pudo crear la transferencia.')
+          const errorMsg = this.resolveApiError(
+            error,
+            'No se pudo cargar el modulo de transferencias.'
           );
+          this.errorMessage.set(errorMsg);
+          void this.uiAlerts.error(errorMsg);
         }
       });
   }
 
-  aprobarTransferencia(): void {
+  async aprobarTransferencia(): Promise<void> {
     const selected = this.selectedTransferencia();
     if (!selected) {
       return;
     }
+
+    const confirmed = await this.uiAlerts.confirm({
+      title: 'Aprobar transferencia',
+      text: `¿Confirmas la aprobacion de la transferencia #${selected.id_transferencia}? El stock en origen sera descontado.`,
+      icon: 'warning',
+      confirmButtonText: 'Si, aprobar'
+    });
+
+    if (!confirmed) return;
 
     const payload: RevisarTransferenciaDto = {
       accion: 'APROBAR',
@@ -445,22 +540,32 @@ export class TransferenciasPage implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.successMessage.set('Transferencia revisada y aprobada correctamente.');
+          void this.uiAlerts.successToast('Transferencia aprobada correctamente.');
           this.cargarVista();
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(
-            this.resolveApiError(error, 'No se pudo aprobar la transferencia.')
-          );
+          const errorMsg = this.resolveApiError(error, 'No se pudo aprobar la transferencia.');
+          this.errorMessage.set(errorMsg);
+          void this.uiAlerts.error(errorMsg);
         }
       });
   }
 
-  rechazarTransferencia(): void {
+  async rechazarTransferencia(): Promise<void> {
     const selected = this.selectedTransferencia();
     if (!selected) {
       return;
     }
+
+    const confirmed = await this.uiAlerts.confirm({
+      title: 'Rechazar transferencia',
+      text: `¿Confirmas el rechazo definitivo de la transferencia #${selected.id_transferencia}?`,
+      icon: 'warning',
+      confirmButtonText: 'Si, rechazar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirmed) return;
 
     const payload: RevisarTransferenciaDto = {
       accion: 'RECHAZAR',
@@ -476,18 +581,18 @@ export class TransferenciasPage implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.successMessage.set('Transferencia rechazada correctamente.');
+          void this.uiAlerts.successToast('Transferencia rechazada correctamente.');
           this.cargarVista();
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(
-            this.resolveApiError(error, 'No se pudo rechazar la transferencia.')
-          );
+          const errorMsg = this.resolveApiError(error, 'No se pudo rechazar la transferencia.');
+          this.errorMessage.set(errorMsg);
+          void this.uiAlerts.error(errorMsg);
         }
       });
   }
 
-  registrarEnvio(): void {
+  async registrarEnvio(): Promise<void> {
     const selected = this.selectedTransferencia();
     if (!selected) {
       return;
@@ -497,6 +602,15 @@ export class TransferenciasPage implements OnInit {
       this.envioForm.markAllAsTouched();
       return;
     }
+
+    const confirmed = await this.uiAlerts.confirm({
+      title: 'Registrar envio',
+      text: `¿Confirmas que la mercancia de la transferencia #${selected.id_transferencia} fue despachada?`,
+      icon: 'question',
+      confirmButtonText: 'Si, registrar envio'
+    });
+
+    if (!confirmed) return;
 
     const value = this.envioForm.getRawValue();
     const payload: RegistrarEnvioTransferenciaDto = {
@@ -514,22 +628,31 @@ export class TransferenciasPage implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.successMessage.set('Envio registrado y transferencia puesta en transito.');
+          void this.uiAlerts.successToast('Envio registrado y transferencia puesta en transito.');
           this.cargarVista();
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(
-            this.resolveApiError(error, 'No se pudo registrar el envio de la transferencia.')
-          );
+          const errorMsg = this.resolveApiError(error, 'No se pudo registrar el envio de la transferencia.');
+          this.errorMessage.set(errorMsg);
+          void this.uiAlerts.error(errorMsg);
         }
       });
   }
 
-  confirmarRecepcion(): void {
+  async confirmarRecepcion(): Promise<void> {
     const selected = this.selectedTransferencia();
     if (!selected) {
       return;
     }
+
+    const confirmed = await this.uiAlerts.confirm({
+      title: 'Confirmar recepcion',
+      text: `¿Confirmas la recepcion de la mercancia de la transferencia #${selected.id_transferencia}? Esto afectara el inventario local.`,
+      icon: 'warning',
+      confirmButtonText: 'Si, confirmar recepcion'
+    });
+
+    if (!confirmed) return;
 
     const payload: ConfirmarRecepcionTransferenciaDto = {
       id_usuario_recibe: this.usuarioId() ?? 0,
@@ -559,13 +682,14 @@ export class TransferenciasPage implements OnInit {
             recepcion: { incidencias: IncidenciaTransferenciaDto[] };
           }>(response);
           this.latestIncidencias.set(result.recepcion?.incidencias ?? []);
-          this.successMessage.set('Recepcion registrada y stock destino actualizado.');
+          
+          void this.uiAlerts.success('Recepcion registrada y stock actualizado correctamente.', 'Terminado');
           this.cargarVista();
         },
         error: (error: HttpErrorResponse) => {
-          this.errorMessage.set(
-            this.resolveApiError(error, 'No se pudo confirmar la recepcion.')
-          );
+          const errorMsg = this.resolveApiError(error, 'No se pudo confirmar la recepcion.');
+          this.errorMessage.set(errorMsg);
+          void this.uiAlerts.error(errorMsg);
         }
       });
   }
@@ -666,10 +790,18 @@ export class TransferenciasPage implements OnInit {
       return 'Sin sucursal';
     }
 
-    return (
-      this.sucursales().find((item) => item.id_sucursal === idSucursal)?.nombre ??
-      `Sucursal #${idSucursal}`
-    );
+    const nombreDesdeListado =
+      this.sucursales().find((item) => Number(item.id_sucursal) === Number(idSucursal))?.nombre ?? null;
+
+    if (nombreDesdeListado) {
+      return nombreDesdeListado;
+    }
+
+    if (Number(this.sucursalId() || 0) === Number(idSucursal) && this.sucursalNombre()) {
+      return this.sucursalNombre();
+    }
+
+    return `Sucursal #${idSucursal}`;
   }
 
   protected getStockOrigen(idProducto: number, idSucursal: number): number {
@@ -680,18 +812,45 @@ export class TransferenciasPage implements OnInit {
     );
   }
 
+  private sincronizarDetalleSolicitud(): void {
+    const productos = this.productosDisponiblesSolicitud();
+    const idProductoActual = Number(this.detalleForm.controls.id_producto.value || 0);
+
+    if (!productos.some((item) => Number(item.id_producto) === idProductoActual)) {
+      this.resetDetalleForm();
+      return;
+    }
+
+    const unidades = this.unidadesDisponiblesDetalle();
+    const idUnidadActual = Number(this.detalleForm.controls.id_producto_unidad.value || 0);
+
+    if (!unidades.some((item) => item.id_producto_unidad === idUnidadActual)) {
+      this.detalleForm.controls.id_producto_unidad.setValue(
+        unidades[0]?.id_producto_unidad ?? 0,
+        { emitEvent: false }
+      );
+    }
+  }
+
   protected getFaltanteRecepcion(item: RecepcionDetalleDraft): number {
     return Math.max(item.cantidad_aprobada - item.cantidad_recibida, 0);
   }
 
   private ensureDefaults(): void {
-    if (!this.transferForm.controls.id_sucursal_destino.value && this.sucursalesDestinoDisponibles().length) {
-      this.transferForm.controls.id_sucursal_destino.setValue(
-        this.sucursalesDestinoDisponibles()[0].id_sucursal
+    if (!this.transferForm.controls.id_sucursal_destino.value && this.sucursalId()) {
+      this.transferForm.controls.id_sucursal_destino.setValue(this.sucursalId()!);
+    }
+
+    if (
+      !this.transferForm.controls.id_sucursal_origen.value &&
+      this.sucursalesOrigenDisponibles().length
+    ) {
+      this.transferForm.controls.id_sucursal_origen.setValue(
+        this.sucursalesOrigenDisponibles()[0].id_sucursal
       );
     }
 
-    if (!this.detalleForm.controls.id_producto.value && this.productosActivos().length) {
+    if (!this.detalleForm.controls.id_producto.value && this.productosDisponiblesSolicitud().length) {
       this.resetDetalleForm();
     }
 
@@ -741,8 +900,8 @@ export class TransferenciasPage implements OnInit {
 
   private resetTransferenciaForm(): void {
     this.transferForm.reset({
-      id_sucursal_origen: this.sucursalId() ?? 0,
-      id_sucursal_destino: this.sucursalesDestinoDisponibles()[0]?.id_sucursal ?? 0,
+      id_sucursal_origen: this.sucursalesOrigenDisponibles()[0]?.id_sucursal ?? 0,
+      id_sucursal_destino: this.sucursalId() ?? 0,
       prioridad: 'NORMAL',
       observacion: ''
     });
@@ -751,14 +910,14 @@ export class TransferenciasPage implements OnInit {
   }
 
   private resetDetalleForm(): void {
-    const firstProducto = this.productosActivos()[0];
+    const firstProducto = this.productosDisponiblesSolicitud()[0];
     const firstUnidad = this.productoUnidadesActivas().find(
-      (item) => item.id_producto === firstProducto?.id_producto
+      (item) => Number(item.id_producto) === Number(firstProducto?.id_producto ?? 0)
     );
 
     this.detalleForm.reset({
-      id_producto: firstProducto?.id_producto ?? 0,
-      id_producto_unidad: firstUnidad?.id_producto_unidad ?? 0,
+      id_producto: Number(firstProducto?.id_producto ?? 0),
+      id_producto_unidad: Number(firstUnidad?.id_producto_unidad ?? 0),
       cantidad_solicitada: 1
     });
   }
@@ -836,6 +995,39 @@ export class TransferenciasPage implements OnInit {
     return typeof value === 'object' && value !== null;
   }
 
+  private resolveSucursalOperadorNombre(): string {
+    const currentUser = this.currentUser();
+
+    if (currentUser?.sucursal?.nombre?.trim()) {
+      return currentUser.sucursal.nombre.trim();
+    }
+
+    const keys = ['multi-sucursal.auth.session', 'ms_user', 'auth_user', 'current_user'];
+
+    for (const key of keys) {
+      const raw = localStorage.getItem(key);
+      if (!raw) {
+        continue;
+      }
+
+      try {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const nombreSucursal =
+          this.readNestedString(parsed, ['user', 'sucursal', 'nombre']) ??
+          this.readNestedString(parsed, ['sucursal', 'nombre']) ??
+          this.readNestedString(parsed, ['usuario', 'sucursal', 'nombre']);
+
+        if (nombreSucursal) {
+          return nombreSucursal;
+        }
+      } catch {
+        //
+      }
+    }
+
+    return '';
+  }
+
   private resolveSucursalOperadorId(): number | null {
     const currentUser = this.currentUser();
     if (currentUser?.id_sucursal) {
@@ -853,5 +1045,26 @@ export class TransferenciasPage implements OnInit {
 
   private resolveUsuarioNombre(): string {
     return this.currentUser()?.nombre?.trim() || 'Usuario actual';
+  }
+
+  private readNestedString(
+    source: Record<string, unknown>,
+    path: readonly string[]
+  ): string | null {
+    let current: unknown = source;
+
+    for (const key of path) {
+      if (!this.isRecord(current) || !(key in current)) {
+        return null;
+      }
+
+      current = current[key];
+    }
+
+    if (typeof current === 'string' && current.trim() !== '') {
+      return current.trim();
+    }
+
+    return null;
   }
 }

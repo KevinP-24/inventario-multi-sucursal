@@ -6,6 +6,7 @@ from app.modules.sucursales.sucursal.service import (
     listar_sucursales_para_respuesta,
     obtener_sucursal_para_respuesta,
 )
+from app.common.decorators import roles_requeridos
 
 sucursales_bp = Blueprint("sucursales", __name__)
 
@@ -27,6 +28,7 @@ def obtener_sucursal_endpoint(id_sucursal):
 
 
 @sucursales_bp.post("/crear_sucursal")
+@roles_requeridos("Admin general", "Admin sucursal")
 def crear_sucursal_endpoint():
     """Crea una sucursal nueva."""
     datos = request.get_json(silent=True) or {}
@@ -39,6 +41,7 @@ def crear_sucursal_endpoint():
 
 
 @sucursales_bp.put("/actualizar_sucursal/<int:id_sucursal>")
+@roles_requeridos("Admin general", "Admin sucursal")
 def actualizar_sucursal_endpoint(id_sucursal):
     """Actualiza una sucursal existente."""
     datos = request.get_json(silent=True) or {}
