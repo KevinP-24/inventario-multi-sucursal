@@ -306,6 +306,7 @@
                 <thead>
                   <tr>
                     <th>Producto</th>
+                    <th>Unidad</th>
                     <th>Solicitada</th>
                     <th>Stock origen</th>
                     <th>Aprobada</th>
@@ -315,6 +316,7 @@
                   @for (detalle of reviewDrafts(); track detalle.id_detalle_transferencia) {
                     <tr>
                       <td>{{ detalle.producto }}</td>
+                      <td>{{ detalle.unidad }}</td>
                       <td>{{ detalle.cantidad_solicitada | number: '1.0-2' }}</td>
                       <td>{{ detalle.stock_disponible | number: '1.0-2' }}</td>
                       <td>
@@ -330,7 +332,7 @@
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="4" class="empty-cell">No hay detalles para revisar.</td>
+                      <td colspan="5" class="empty-cell">No hay detalles para revisar.</td>
                     </tr>
                   }
                 </tbody>
@@ -419,6 +421,7 @@
                 <thead>
                   <tr>
                     <th>Producto</th>
+                    <th>Unidad</th>
                     <th>Aprobada</th>
                     <th>Recibida</th>
                     <th>Faltante</th>
@@ -430,6 +433,7 @@
                   @for (detalle of recepcionDrafts(); track detalle.id_detalle_transferencia) {
                     <tr>
                       <td>{{ detalle.producto }}</td>
+                      <td>{{ detalle.unidad }}</td>
                       <td>{{ detalle.cantidad_aprobada | number: '1.0-2' }}</td>
                       <td>
                         <input
@@ -466,7 +470,7 @@
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="6" class="empty-cell">No hay cantidades aprobadas pendientes por recibir.</td>
+                      <td colspan="7" class="empty-cell">No hay cantidades aprobadas pendientes por recibir.</td>
                     </tr>
                   }
                 </tbody>

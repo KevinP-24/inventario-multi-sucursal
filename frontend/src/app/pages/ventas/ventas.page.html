@@ -177,7 +177,10 @@
                     <td>{{ getProductoNombre(detalle.id_producto) }}</td>
                     <td>{{ getUnidadNombre(detalle.id_producto_unidad) }}</td>
                     <td>{{ detalle.cantidad | number: '1.0-2' }}</td>
-                    <td>{{ getPrecioUnitarioDraft(detalle.id_producto, ventaForm.controls.id_lista_precio.value, detalle.id_producto_unidad) | currency: 'COP':'symbol':'1.0-0' }}</td>
+                    <td>
+                      {{ getPrecioUnitarioDraft(detalle.id_producto, ventaForm.controls.id_lista_precio.value, detalle.id_producto_unidad) | currency: 'COP':'symbol':'1.0-0' }}
+                    </td>
+                    <td>{{ (detalle.descuento ?? 0) | currency: 'COP':'symbol':'1.0-0' }}</td>
                     <td>{{ getSubtotalDraft(detalle) | currency: 'COP':'symbol':'1.0-0' }}</td>
                     <td>
                       <button class="btn btn--danger" type="button" (click)="removerDetalleVenta($index)">Quitar</button>

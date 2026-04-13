@@ -73,6 +73,7 @@ interface RevisionDetalleDraft {
 interface RecepcionDetalleDraft {
   readonly id_detalle_transferencia: number;
   readonly producto: string;
+  readonly unidad: string;
   readonly cantidad_aprobada: number;
   cantidad_recibida: number;
   tratamiento: string;
@@ -234,11 +235,9 @@ export class TransferenciasPage implements OnInit {
       total_items: item.detalles?.length ?? 0,
       puede_revisar:
         item.estado === 'SOLICITADA' &&
-        this.isAdminSucursal() &&
         (!this.hasFixedSucursal() || item.id_sucursal_origen === this.sucursalId()),
       puede_enviar:
         item.estado === 'APROBADA' &&
-        this.isAdminSucursal() &&
         (!this.hasFixedSucursal() || item.id_sucursal_origen === this.sucursalId()),
       puede_recibir:
         item.estado === 'ENVIADA' &&
@@ -996,6 +995,7 @@ private buildUnidadLabel(unidad: ProductoUnidadDto): string {
         .map((item) => ({
           id_detalle_transferencia: item.id_detalle_transferencia,
           producto: item.producto,
+          unidad: item.unidad,
           cantidad_aprobada: item.cantidad_aprobada,
           cantidad_recibida: item.cantidad_aprobada,
           tratamiento: '',
