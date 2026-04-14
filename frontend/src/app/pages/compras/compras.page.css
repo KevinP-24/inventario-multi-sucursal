@@ -10,6 +10,10 @@
 }
 
 .tab-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 160px;
   min-height: 42px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
@@ -19,6 +23,7 @@
   cursor: pointer;
   font-size: 0.88rem;
   font-weight: 600;
+  text-align: center;
 }
 
 .tab-button--active {
@@ -85,6 +90,10 @@
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 18px;
+}
+
+.panel__header > div {
+  min-width: 0;
 }
 
 .panel__header h2 {
@@ -487,6 +496,87 @@
 
   .detail-builder__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  .catalog-layout,
+  .compras-kpis,
+  .form-grid,
+  .selected-card__stats,
+  .totals-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .panel__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .compras-tabs {
+    gap: 6px;
+  }
+
+  .tab-button {
+    flex: 1 1 calc(50% - 6px);
+  }
+
+  .actions-group {
+    flex-wrap: wrap;
+  }
+
+  .table-shell {
+    overflow-x: auto;
+  }
+
+  .data-table {
+    min-width: 760px;
+  }
+}
+
+@media (max-width: 760px) {
+  .panel {
+    padding: 18px;
+  }
+
+  .panel--filters {
+    padding: 16px;
+  }
+
+  .filters-form,
+  .detail-builder__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tab-button {
+    flex-basis: 100%;
+    width: 100%;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions .btn,
+  .detail-builder__grid > .btn,
+  .filters-form > .btn {
+    width: 100%;
+  }
+
+  .actions-cell {
+    align-items: flex-start;
+  }
+
+  .selected-card {
+    padding: 14px;
+  }
+
+  .mini-list__item {
+    padding: 12px;
+  }
+
+  .data-table {
+    min-width: 680px;
   }
 }
 

@@ -1,4 +1,12 @@
-<div class="workspace-shell">
+<div class="workspace-shell" [class.workspace-shell--sidebar-open]="isSidebarOpen()">
+  <button
+    type="button"
+    class="sidebar-backdrop"
+    [class.sidebar-backdrop--visible]="isSidebarOpen()"
+    (click)="closeSidebar()"
+    aria-label="Cerrar menú lateral"
+  ></button>
+
   <aside class="workspace-shell__sidebar">
     <div class="sidebar-inner">
 
@@ -29,6 +37,7 @@
             routerLinkActive="nav__item--active"
             [routerLinkActiveOptions]="{ exact: item.path === '/app/dashboard' }"
             [attr.title]="item.label"
+            (click)="closeSidebarOnMobile()"
           >
             <span class="nav__icon" aria-hidden="true">
               <fa-icon [icon]="resolveIcon(item.icon)"></fa-icon>
@@ -59,6 +68,15 @@
 
   <section class="workspace-shell__content">
     <header class="topbar">
+      <button
+        type="button"
+        class="sidebar-toggle"
+        (click)="toggleSidebar()"
+        [attr.aria-label]="isSidebarOpen() ? 'Cerrar menú' : 'Abrir menú'"
+      >
+        <fa-icon [icon]="isSidebarOpen() ? closeMenuIcon : menuIcon"></fa-icon>
+      </button>
+
       <div class="topbar__content">
         <p class="topbar__label">Área activa</p>
         <h2 class="topbar__title">{{ activeSection() }}</h2>
