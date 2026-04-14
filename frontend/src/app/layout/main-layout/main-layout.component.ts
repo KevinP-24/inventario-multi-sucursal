@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
@@ -7,6 +7,7 @@ import { filter, map, startWith } from 'rxjs';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
   faArrowRightFromBracket,
+  faBars,
   faBoxesStacked,
   faChartLine,
   faChartPie,
@@ -16,7 +17,8 @@ import {
   faShoppingBag,
   faStore,
   faTruck,
-  faUser
+  faUser,
+  faXmark
 } from '@fortawesome/free-solid-svg-icons';
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 
@@ -51,6 +53,7 @@ export class MainLayoutComponent {
   private readonly authSession = inject(AuthSessionService);
 
   protected readonly currentUser = this.authSession.currentUser;
+  protected readonly isSidebarOpen = signal(false);
 
   protected readonly apiState = toSignal(this.apiHealthService.checkHealth(), {
     initialValue: initialApiState
@@ -144,6 +147,8 @@ export class MainLayoutComponent {
 
   protected readonly userIcon = faUser;
   protected readonly logoutIcon = faArrowRightFromBracket;
+  protected readonly menuIcon = faBars;
+  protected readonly closeMenuIcon = faXmark;
 
   private readonly iconMap: Record<string, IconDefinition> = {
     dashboard: faHouse,
@@ -164,6 +169,20 @@ export class MainLayoutComponent {
     }
 
     return this.iconMap[icon] ?? faHouse;
+  }
+
+  protected toggleSidebar() {
+    this.isSidebarOpen.update((value) => !value);
+  }
+
+  protected closeSidebar() {
+    this.isSidebarOpen.set(false);
+  }
+
+  protected closeSidebarOnMobile() {
+    if (window.innerWidth <= 980) {
+      this.closeSidebar();
+    }
   }
 
   protected logout() {

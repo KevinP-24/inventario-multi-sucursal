@@ -10,6 +10,11 @@
 }
 
 .tab-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 160px;
+  min-height: 42px;
   border: 1px solid rgba(24, 40, 72, 0.12);
   background: rgba(255, 255, 255, 0.72);
   color: var(--color-text);
@@ -18,8 +23,8 @@
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+  text-align: center;
 }
-
 .tab-button--active {
   background: rgba(213, 148, 37, 0.12);
   border-color: rgba(213, 148, 37, 0.32);
@@ -102,6 +107,10 @@
   gap: 12px;
   align-items: start;
   margin-bottom: 20px;
+}
+
+.panel__header > div {
+  min-width: 0;
 }
 
 .panel__header h2,
@@ -377,13 +386,27 @@
 }
 
 @media (max-width: 1100px) {
-  .transferencias-kpis,
-  .catalog-layout,
+  .transferencias-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-layout {
+    grid-template-columns: 1fr;
+  }
+
   .form-grid,
   .detail-builder__grid,
   .filters-form,
   .selected-card__stats {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .actions-group {
+    flex-wrap: wrap;
+  }
+
+  .data-table {
+    min-width: 760px;
   }
 }
 
@@ -398,6 +421,14 @@
     grid-template-columns: 1fr;
   }
 
+  .transferencias-tabs {
+    gap: 6px;
+  }
+
+  .tab-button {
+    flex: 1 1 calc(50% - 6px);
+  }
+
   .field--full {
     grid-column: auto;
   }
@@ -409,7 +440,50 @@
 
   .panel,
   .panel--table,
-  .panel--filters {
+  .panel--filters,
+  .selected-card,
+  .mini-list__item {
     padding: 18px;
+  }
+
+  .panel__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-actions,
+  .form-actions--end {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-actions .btn,
+  .form-actions--end .btn,
+  .filters-form .btn,
+  .detail-builder .btn {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .data-table {
+    min-width: 680px;
+  }
+}
+
+@media (max-width: 520px) {
+  .tab-button {
+    flex-basis: 100%;
+    width: 100%;
+  }
+
+  .kpi-card,
+  .panel,
+  .selected-card,
+  .mini-list__item {
+    border-radius: 20px;
+  }
+
+  .kpi-card__value {
+    font-size: 1.6rem;
   }
 }

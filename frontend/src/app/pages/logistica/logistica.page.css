@@ -10,6 +10,11 @@
 }
 
 .tab-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 160px;
+  min-height: 42px;
   border: 1px solid rgba(24, 40, 72, 0.12);
   background: rgba(255, 255, 255, 0.72);
   color: var(--color-text);
@@ -18,6 +23,7 @@
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+  text-align: center;
 }
 
 .tab-button--active {
@@ -99,6 +105,10 @@
   gap: 12px;
   align-items: start;
   margin-bottom: 20px;
+}
+
+.panel__header > div {
+  min-width: 0;
 }
 
 .panel__header h2 {
@@ -332,17 +342,30 @@
 }
 
 @media (max-width: 1100px) {
-  .logistica-kpis,
-  .catalog-layout,
+  .logistica-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-layout {
+    grid-template-columns: 1fr;
+  }
+
   .filters-form,
   .selected-card__stats {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .actions-group {
+    flex-wrap: wrap;
+  }
+
+  .data-table {
+    min-width: 760px;
   }
 }
 
 @media (max-width: 760px) {
   .logistica-kpis,
-  .catalog-layout,
   .filters-form,
   .selected-card__stats {
     grid-template-columns: 1fr;
@@ -350,7 +373,51 @@
 
   .panel,
   .panel--table,
-  .panel--filters {
+  .panel--filters,
+  .selected-card {
     padding: 18px;
+  }
+
+  .logistica-tabs {
+    gap: 6px;
+  }
+
+  .tab-button {
+    flex: 1 1 calc(50% - 6px);
+  }
+
+  .panel__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions .btn,
+  .filters-form .btn {
+    width: 100%;
+  }
+
+  .data-table {
+    min-width: 680px;
+  }
+}
+
+@media (max-width: 520px) {
+  .tab-button {
+    flex-basis: 100%;
+    width: 100%;
+  }
+
+  .kpi-card,
+  .panel,
+  .selected-card {
+    border-radius: 20px;
+  }
+
+  .kpi-card__value {
+    font-size: 1.6rem;
   }
 }

@@ -10,6 +10,14 @@
     linear-gradient(135deg, #eef3f0 0%, #f8f5ef 52%, #e6ece9 100%);
 }
 
+.sidebar-backdrop {
+  display: none;
+}
+
+.sidebar-toggle {
+  display: none;
+}
+
 .workspace-shell__sidebar {
   position: fixed;
   top: 0;
@@ -350,6 +358,19 @@
   background: var(--color-background);
 }
 
+.sidebar-toggle {
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--color-text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .page-content {
   padding: 12px clamp(20px, 4vw, 40px) 40px;
 }
@@ -422,59 +443,169 @@
 @media (max-width: 980px) {
   .workspace-shell {
     height: auto;
-    overflow: visible;
+    min-height: 100vh;
+    overflow: hidden;
   }
 
   .workspace-shell__sidebar {
-    position: static;
-    width: 100%;
-    height: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--color-border);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(86vw, 320px);
+    height: 100vh;
+    border-right: 1px solid var(--color-border);
+    border-bottom: 0;
+    transform: translateX(-100%);
+    transition:
+      transform 220ms ease,
+      width 220ms ease;
+    overflow: hidden;
   }
 
   .workspace-shell__sidebar:hover {
-    width: 100%;
+    width: min(86vw, 320px);
+  }
+
+  .workspace-shell--sidebar-open .workspace-shell__sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    border: 0;
+    background: rgba(6, 10, 16, 0.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+  }
+
+  .sidebar-backdrop--visible {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .workspace-shell__content,
   .workspace-shell:has(.workspace-shell__sidebar:hover) .workspace-shell__content {
     margin-left: 0;
     height: auto;
+    min-height: 100vh;
     overflow: visible;
   }
 
   .sidebar-inner {
-    grid-template-rows: auto auto auto;
-    min-height: auto;
-    height: auto;
-    overflow: visible;
+    grid-template-rows: auto 1fr auto;
+    gap: 16px;
+    min-height: 100%;
+    height: 100%;
+    padding: 20px 14px;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .brand,
   .user-card,
   .nav__item,
-  .logout-button {
+  .logout-button,
+  .workspace-shell__sidebar:not(:hover) .brand,
+  .workspace-shell__sidebar:not(:hover) .user-card,
+  .workspace-shell__sidebar:not(:hover) .nav__item,
+  .workspace-shell__sidebar:not(:hover) .logout-button {
     grid-template-columns: 48px minmax(0, 1fr);
     justify-content: stretch;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    padding: 10px 12px;
+    margin-inline: 0;
+  }
+
+  .workspace-shell__sidebar:not(:hover) .user-card {
+    min-height: 76px;
+    padding: 14px;
+  }
+
+  .workspace-shell__sidebar:not(:hover) .nav__item,
+  .workspace-shell__sidebar:not(:hover) .logout-button {
+    min-height: 60px;
   }
 
   .brand__text,
   .user-card__content,
   .nav__content,
-  .logout-button__text {
+  .logout-button__text,
+  .workspace-shell__sidebar:not(:hover) .brand__text,
+  .workspace-shell__sidebar:not(:hover) .user-card__content,
+  .workspace-shell__sidebar:not(:hover) .nav__content,
+  .workspace-shell__sidebar:not(:hover) .logout-button__text {
+    display: grid;
     max-width: 240px;
     opacity: 1;
     transform: none;
     pointer-events: auto;
   }
 
-  .sidebar-footer__status {
+  .workspace-shell__sidebar:not(:hover) .nav {
+    justify-items: stretch;
+  }
+
+  .workspace-shell__sidebar:not(:hover) .brand__mark,
+  .workspace-shell__sidebar:not(:hover) .user-card__avatar,
+  .workspace-shell__sidebar:not(:hover) .nav__icon,
+  .workspace-shell__sidebar:not(:hover) .logout-button__icon {
+    margin: 0;
+    place-self: center;
+  }
+
+  .sidebar-footer__status,
+  .workspace-shell__sidebar:hover .sidebar-footer__status {
     display: block;
   }
 
   .topbar {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 15;
     flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px 20px 12px;
+  }
+
+  .sidebar-toggle {
+    display: inline-flex;
+  }
+
+  .page-content {
+    padding: 12px 20px 28px;
+  }
+
+  .topbar__copy {
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .workspace-shell__sidebar {
+    width: min(92vw, 320px);
+  }
+
+  .topbar {
+    padding: 16px 16px 10px;
+  }
+
+  .page-content {
+    padding: 10px 16px 24px;
+  }
+
+  .user-card,
+  .nav__item,
+  .logout-button,
+  .workspace-shell__sidebar:not(:hover) .user-card,
+  .workspace-shell__sidebar:not(:hover) .nav__item,
+  .workspace-shell__sidebar:not(:hover) .logout-button {
+    padding-inline: 10px;
   }
 }

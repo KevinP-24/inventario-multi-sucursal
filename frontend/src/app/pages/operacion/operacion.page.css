@@ -10,6 +10,11 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.metrics-grid > *,
+.operacion-grid > * {
+  min-width: 0;
+}
+
 .operacion-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -86,6 +91,7 @@
   border: 1px solid rgba(23, 33, 43, 0.08);
   border-radius: 18px;
   background: #fffdf8;
+  min-width: 0;
 }
 
 .stack-item strong,
@@ -143,5 +149,43 @@
   .stack-item__meta {
     justify-items: start;
     text-align: left;
+  }
+}
+
+@media (max-width: 760px) {
+  .metric-card,
+  .panel-card,
+  .state-card {
+    padding: 18px;
+  }
+
+  .quick-notes {
+    grid-template-columns: 1fr;
+  }
+
+  .stack-item {
+    padding: 14px 16px;
+  }
+}
+
+@media (max-width: 520px) {
+  .metric-card,
+  .panel-card,
+  .state-card {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .metric-card strong {
+    font-size: 1.45rem;
+  }
+
+  .stack-item {
+    padding: 12px 14px;
+    border-radius: 16px;
+  }
+
+  .quick-notes span {
+    padding: 10px 12px;
   }
 }
