@@ -1,108 +1,120 @@
-````md
 # Multi-sucursal
 
-Sistema de inventario multi-sucursal desarrollado como solución para la prueba técnica de OptiPlant Consultores. La aplicación permite gestionar inventario, compras, ventas, transferencias entre sucursales, logística y visualización de indicadores, manteniendo autonomía operativa por sede y visibilidad compartida sobre el inventario general de la red.
+Sistema de inventario multi-sucursal desarrollado como solucion para la prueba tecnica de OptiPlant Consultores. La aplicacion permite gestionar inventario, compras, ventas, transferencias entre sucursales, logistica y visualizacion de indicadores, manteniendo autonomia operativa por sede y visibilidad compartida sobre el inventario general de la red.
 
 ## Objetivo del proyecto
 
-Diseñar e implementar una solución robusta para la gestión de inventario de múltiples sucursales, cumpliendo con separación de capas entre frontend, backend y base de datos, comunicación mediante API REST y despliegue completo con Docker Compose.
+Disenar e implementar una solucion robusta para la gestion de inventario de multiples sucursales, cumpliendo con separacion de capas entre frontend, backend y base de datos, comunicacion mediante API REST y despliegue completo con Docker Compose.
 
 ## Alcance funcional
 
-La solución cubre los módulos principales solicitados para la prueba técnica:
+La solucion cubre los modulos principales solicitados para la prueba tecnica:
 
-### Gestión de inventario
-- gestión de productos
-- consulta de inventario por sucursal
-- consulta de inventario de otras sucursales
-- ingresos y retiros de inventario
-- control de stock mínimo
-- trazabilidad de movimientos
-- manejo de múltiples unidades de medida
+### Gestion de inventario
+
+* gestion de productos
+* consulta de inventario por sucursal
+* consulta de inventario de otras sucursales
+* ingresos y retiros de inventario
+* control de stock minimo
+* trazabilidad de movimientos
+* manejo de multiples unidades de medida
 
 ### Compras
-- creación y gestión de órdenes de compra
-- registro de condiciones de compra
-- recepción de mercancía
-- actualización automática del inventario
-- histórico de compras
-- cálculo de costo promedio ponderado
+
+* creacion y gestion de ordenes de compra
+* registro de condiciones de compra
+* recepcion de mercancia
+* actualizacion automatica del inventario
+* historico de compras
+* calculo de costo promedio ponderado
 
 ### Ventas
-- registro de ventas
-- validación de disponibilidad de stock
-- aplicación de descuentos
-- manejo de listas de precios
-- generación de comprobantes
+
+* registro de ventas
+* validacion de disponibilidad de stock
+* aplicacion de descuentos
+* manejo de listas de precios
+* generacion de comprobantes
 
 ### Transferencias entre sucursales
-- solicitud de transferencias
-- validación de disponibilidad en sucursal origen
-- aprobación o ajuste de cantidades
-- registro de envío
-- confirmación de recepción completa o parcial
-- registro de faltantes y diferencias
 
-### Logística
-- tiempos estimados y reales de entrega
-- clasificación de rutas
-- seguimiento del estado de transferencias
-- reportes de cumplimiento logístico
+* solicitud de transferencias
+* validacion de disponibilidad en sucursal origen
+* aprobacion o ajuste de cantidades
+* registro de envio
+* confirmacion de recepcion completa o parcial
+* registro de faltantes y diferencias
+
+### Logistica
+
+* tiempos estimados y reales de entrega
+* clasificacion de rutas
+* seguimiento del estado de transferencias
+* reportes de cumplimiento logistico
 
 ### Dashboard
-- comparativa de ventas
-- indicadores de inventario
-- productos de alta y baja demanda
-- estado de transferencias activas
-- indicadores de reabastecimiento
-- comparativa entre sucursales para perfiles administrativos
 
-## Arquitectura de la solución
+* comparativa de ventas
+* indicadores de inventario
+* productos de alta y baja demanda
+* estado de transferencias activas
+* indicadores de reabastecimiento
+* comparativa entre sucursales para perfiles administrativos
 
-La solución fue construida bajo una arquitectura de tres capas:
+## Arquitectura de la solucion
 
-- **Frontend:** Angular
-- **Backend:** Python + Flask
-- **Base de datos:** PostgreSQL
-- **Infraestructura:** Docker Compose
+La solucion fue construida bajo una arquitectura de tres capas:
 
-### Separación de responsabilidades
+* Frontend: Angular
+* Backend: Python con Flask
+* Base de datos: PostgreSQL
+* Infraestructura: Docker Compose
 
-- El frontend se encarga exclusivamente de la capa de presentación.
-- El backend centraliza la lógica del negocio, validaciones, reglas de inventario, compras, ventas y transferencias.
-- PostgreSQL gestiona la persistencia, consistencia y trazabilidad de la información.
-- Docker Compose orquesta todos los servicios del sistema con un solo comando.
+### Separacion de responsabilidades
 
-## Decisiones técnicas principales
+* El frontend se encarga exclusivamente de la capa de presentacion.
+* El backend centraliza la logica del negocio, validaciones, reglas de inventario, compras, ventas y transferencias.
+* PostgreSQL gestiona la persistencia, consistencia y trazabilidad de la informacion.
+* Docker Compose orquesta todos los servicios del sistema con un solo comando.
+
+## Decisiones tecnicas principales
 
 ### Frontend: Angular
-Se eligió Angular por su estructura modular, su organización para aplicaciones administrativas y su facilidad para separar la capa de presentación de la lógica del negocio.
+
+Se eligio Angular por su estructura modular, su organizacion para aplicaciones administrativas y su facilidad para separar la capa de presentacion de la logica del negocio.
 
 ### Backend: Python con Flask
-Se eligió Flask por su ligereza y claridad para construir una API REST capaz de centralizar validaciones, reglas operativas y procesamiento transaccional sin agregar complejidad innecesaria.
+
+Se eligio Flask por su ligereza y claridad para construir una API REST capaz de centralizar validaciones, reglas operativas y procesamiento transaccional sin agregar complejidad innecesaria.
 
 ### Base de datos: PostgreSQL
-Se eligió PostgreSQL porque el sistema maneja información relacional y transaccional, con necesidad de mantener consistencia, integridad y trazabilidad en operaciones de inventario, compras, ventas y transferencias.
+
+Se eligio PostgreSQL porque el sistema maneja informacion relacional y transaccional, con necesidad de mantener consistencia, integridad y trazabilidad en operaciones de inventario, compras, ventas y transferencias.
 
 ### Infraestructura: Docker Compose
-Se adoptó Docker Compose para permitir la ejecución integral del sistema con un solo comando, dejando frontend, backend y base de datos como servicios independientes y aislados.
 
-### Autenticación y autorización
-La autenticación se implementó mediante JWT. La autorización se gestiona por roles, restringiendo el acceso a funciones según el nivel de responsabilidad de cada usuario.
+Se adopto Docker Compose para permitir la ejecucion integral del sistema con un solo comando, dejando frontend, backend y base de datos como servicios independientes y aislados.
 
-### Sincronización entre sucursales
-La sincronización del inventario entre sucursales se resuelve mediante una base de datos centralizada y una única API de backend. Bajo este enfoque, cada ingreso, retiro, compra, venta o transferencia actualiza la información compartida del sistema en tiempo real o near-real-time.
+### Autenticacion y autorizacion
 
-### Patrones de diseño
-En el backend se aplicó una organización orientada a separación de responsabilidades, apoyándose en una capa de servicios para la lógica de negocio y una capa de acceso a datos para mantener el código más claro, desacoplado y mantenible.
+La autenticacion se implemento mediante JWT. La autorizacion se gestiona por roles, restringiendo el acceso a funciones segun el nivel de responsabilidad de cada usuario.
+
+### Sincronizacion entre sucursales
+
+La sincronizacion del inventario entre sucursales se resuelve mediante una base de datos centralizada y una unica API de backend. Bajo este enfoque, cada ingreso, retiro, compra, venta o transferencia actualiza la informacion compartida del sistema en tiempo real o near real time.
+
+### Patrones de diseno
+
+En el backend se aplico una organizacion orientada a separacion de responsabilidades, apoyandose en una capa de servicios para la logica de negocio y una capa de acceso a datos para mantener el codigo mas claro, desacoplado y mantenible.
 
 ## Modelo base del sistema
 
 A nivel administrativo, el sistema se apoya principalmente en tres entidades base:
 
-- **Rol**
-- **Sucursal**
-- **Usuario**
+* Rol
+* Sucursal
+* Usuario
 
 Estas entidades permiten controlar permisos, trazabilidad y alcance operativo dentro de la plataforma.
 
@@ -111,42 +123,39 @@ Estas entidades permiten controlar permisos, trazabilidad y alcance operativo de
 El sistema incluye tres perfiles principales de prueba:
 
 ### Administrador general
-- **Correo:** `admin.general@multisucursal.local`
-- **Contraseña:** `Admin123*`
+
+Correo: [admin.general@multisucursal.local](mailto:admin.general@multisucursal.local)
+Contrasena: Admin123*
 
 ### Admin sucursal
-- **Correo:** `admin.sucursal@multisucursal.local`
-- **Contraseña:** `Sucursal123*`
+
+Correo: [admin.sucursal@multisucursal.local](mailto:admin.sucursal@multisucursal.local)
+Contrasena: Sucursal123*
 
 ### Operario de inventario
-- **Correo:** `operario.inventario@multisucursal.local`
-- **Contraseña:** `Inventario123*`
+
+Correo: [operario.inventario@multisucursal.local](mailto:operario.inventario@multisucursal.local)
+Contrasena: Inventario123*
 
 ## Puesta en marcha
 
-Para crear todo desde cero y levantar el entorno completo en una máquina virgen, ejecuta desde la raíz del proyecto:
+Para crear todo desde cero y levantar el entorno completo en una maquina virgen, ejecuta desde la raiz del proyecto:
 
-```powershell
 docker compose up --build -d
-````
 
-También puedes usar el lanzador incluido:
+Tambien puedes usar el lanzador incluido:
 
-```powershell
-.\start.ps1
-```
+start.ps1
 
-Alternativa en `cmd`:
+Alternativa en cmd:
 
-```bat
 start.cmd
-```
 
-## ¿Qué hace el arranque?
+## Que hace el arranque
 
 Este proceso:
 
-* construye las imágenes
+* construye las imagenes
 * crea la base de datos
 * aplica migraciones
 * carga datos iniciales
@@ -158,25 +167,25 @@ Este proceso:
 
 ## Estructura general del proyecto
 
-```text
 /
-├── backend/
-├── frontend/
-├── database/
-├── docker-compose.yml
-├── start.ps1
-├── start.cmd
-└── README.md
-```
+backend/
+frontend/
+database/
+docker-compose.yml
+start.ps1
+start.cmd
+README.md
 
-## Diagramas de ingeniería
+## Diagramas de ingenieria
 
-El repositorio incluye los diagramas requeridos por la prueba técnica:
+El repositorio incluye los diagramas requeridos por la prueba tecnica como archivos separados dentro de la carpeta de documentacion:
 
-* diagrama de casos de uso
-* diagrama de actividades
-* diagrama de arquitectura
-* diagrama entidad-relación
+* Actores del sistema y diagrama de casos de uso
+* Diagrama de actividades
+* Diagrama de arquitectura
+* Diagrama Entidad relacion final
+
+Adicionalmente, se incluye el documento de Levantamiento de Requerimientos y el documento de Historias de Usuario como soporte complementario del modelado y la trazabilidad funcional del sistema.
 
 ## Reglas de negocio relevantes
 
@@ -188,83 +197,118 @@ El repositorio incluye los diagramas requeridos por la prueba técnica:
 
 ## Uso de inteligencia artificial en el desarrollo
 
-Durante el desarrollo del proyecto se utilizaron herramientas de inteligencia artificial como un apoyo importante para avanzar con mayor velocidad, validar coherencia entre entregables y acelerar tareas repetitivas de implementación.
+Durante el desarrollo del proyecto se utilizaron herramientas de inteligencia artificial como un apoyo importante para avanzar con mayor velocidad, validar coherencia entre entregables y acelerar tareas repetitivas de implementacion.
 
 ### Herramientas utilizadas
 
-* **ChatGPT (OpenAI):** se utilizó para validar coherencia entre documentos, revisar consistencia entre requerimientos, actores, módulos, flujos y modelo de datos, y apoyar la redacción y organización de la documentación técnica.
-* **Codex (OpenAI):** se utilizó para construir estructuras repetitivas de código, apoyar la definición de esqueletos base del proyecto, montar la estructura inicial del modelo de base de datos propuesto y apoyar la configuración inicial de la infraestructura Docker para levantar toda la solución con un solo comando.
-* **Claude (Anthropic):** se utilizó para validaciones rápidas de estilos CSS, contraste visual de componentes y revisión ágil de consistencia en secciones frontend.
+* ChatGPT de OpenAI: se utilizo para validar coherencia entre documentos, revisar consistencia entre requerimientos, actores, modulos, flujos y modelo de datos, y apoyar la redaccion y organizacion de la documentacion tecnica.
+* Codex de OpenAI: se utilizo para construir estructuras repetitivas de codigo, apoyar la definicion de esqueletos base del proyecto, montar la estructura inicial del modelo de base de datos propuesto y apoyar la configuracion inicial de la infraestructura Docker para levantar toda la solucion con un solo comando.
+* Claude de Anthropic: se utilizo para validaciones rapidas de estilos CSS, contraste visual de componentes y revision agil de consistencia en secciones frontend.
 
-### Etapas en las que se aplicó IA
+### Etapas en las que se aplico IA
 
 Las herramientas de IA se utilizaron principalmente en:
 
-* validación de coherencia entre documentación técnica y módulos del sistema
-* organización de la estructura del README y de los documentos de soporte
-* construcción de estructuras repetitivas de implementación
-* apoyo en la definición inicial del modelo de datos
-* apoyo en la estructura inicial de Docker e integración del arranque del entorno
-* revisión rápida de estilos y consistencia visual en frontend
+* validacion de coherencia entre documentacion tecnica y modulos del sistema
+* organizacion de la estructura del README y de los documentos de soporte
+* construccion de estructuras repetitivas de implementacion
+* apoyo en la definicion inicial del modelo de datos
+* apoyo en la estructura inicial de Docker e integracion del arranque del entorno
+* revision rapida de estilos y consistencia visual en frontend
 
-### Ejemplos concretos de uso
+### Evidencia de uso de IA: prompts y resultados obtenidos
 
-#### Ejemplo 1: coherencia documental
+A continuacion se documentan algunos prompts representativos utilizados durante el desarrollo del proyecto, junto con el resultado obtenido y el ajuste manual realizado posteriormente.
 
-**Objetivo:** contrastar requerimientos, actores, casos de uso y entidades para verificar que el sistema estuviera alineado con la prueba técnica.
+#### Ejemplo 1: coherencia entre documentos del proyecto
 
-**Resultado:** permitió detectar vacíos, ajustar relaciones entre módulos y mejorar la consistencia entre documentos antes de cerrar la entrega.
+Herramienta utilizada: ChatGPT
+Objetivo: validar coherencia entre requerimientos, actores, casos de uso, historias de usuario y modelo de datos.
 
-#### Ejemplo 2: estructura base de backend y base de datos
+Prompt representativo:
+Contrasta estos entregables de la prueba tecnica: levantamiento de requerimientos, actores del sistema, diagrama entidad relacion y flujos. Dime que modulos, actores, tablas o relaciones faltan, cuales sobran y que cambios exactos debo hacer para que todo quede alineado con la prueba.
 
-**Objetivo:** acelerar la construcción de estructuras repetitivas y partir de una base ordenada para módulos, entidades y relaciones iniciales.
+Resultado obtenido:
+La IA ayudo a detectar inconsistencias entre actores, modulos y entidades, ademas de senalar vacios entre el documento de requerimientos y el modelo de datos.
 
-**Resultado:** se obtuvo una base inicial útil para el proyecto, que posteriormente fue ajustada manualmente para reflejar las reglas reales del sistema.
+Ajuste manual realizado:
+Se corrigieron manualmente relaciones del modelo E R, responsabilidades de actores, flujos de transferencia y alcance real de algunos modulos para mantener coherencia con la implementacion final.
 
-#### Ejemplo 3: infraestructura Docker
+#### Ejemplo 2: estructura base de backend y modelo inicial de datos
 
-**Objetivo:** estructurar la base de la infraestructura para levantar frontend, backend y base de datos con un solo comando.
+Herramienta utilizada: Codex
+Objetivo: acelerar la construccion de estructuras repetitivas de codigo y partir de una base organizada para modulos, entidades y relaciones iniciales.
 
-**Resultado:** sirvió como punto de partida para organizar la configuración inicial del entorno y acelerar la puesta en marcha del proyecto.
+Prompt representativo:
+Genera una estructura base para un sistema de inventario multi sucursal con backend Flask y PostgreSQL. Incluye organizacion por modulos, entidades principales, relaciones iniciales, separacion entre rutas, servicios y acceso a datos.
 
-#### Ejemplo 4: revisión visual rápida
+Resultado obtenido:
+Se obtuvo una base inicial util para estructurar el proyecto, acelerar la creacion de archivos repetitivos y organizar la primera version del modelo de datos.
 
-**Objetivo:** validar estilos CSS y coherencia visual de componentes frontend.
+Ajuste manual realizado:
+Fue necesario modificar manualmente entidades, relaciones, nombres de tablas, reglas operativas y permisos para reflejar el comportamiento real del sistema y los requerimientos de la prueba.
 
-**Resultado:** permitió detectar ajustes rápidos de presentación y mantener una interfaz más consistente.
+#### Ejemplo 3: infraestructura Docker y levantamiento con un solo comando
 
-### Evaluación crítica del uso de IA
+Herramienta utilizada: Codex
+Objetivo: estructurar una base de infraestructura para levantar frontend, backend y base de datos con Docker Compose.
 
-La IA fue útil para acelerar la documentación, contrastar consistencia entre entregables, construir bases iniciales de implementación y reducir tiempo en tareas repetitivas. También aportó velocidad en la definición inicial del modelo de datos, la estructura del proyecto y la infraestructura Docker.
+Prompt representativo:
+Genera un docker compose para un proyecto con frontend Angular, backend Flask y PostgreSQL. El entorno debe levantar todos los servicios con un solo comando, esperar disponibilidad de la base de datos, ejecutar migraciones y cargar datos semilla.
 
-Sin embargo, fue necesario ajustar manualmente aspectos clave como:
+Resultado obtenido:
+La IA sirvio como punto de partida para definir la estructura inicial del archivo docker-compose.yml y organizar el flujo de arranque del entorno.
+
+Ajuste manual realizado:
+Se adaptaron manualmente variables de entorno, comandos de migracion, seed de datos, puertos, nombres de contenedores y dependencias entre servicios hasta obtener una configuracion funcional para el proyecto.
+
+#### Ejemplo 4: revision visual rapida de frontend
+
+Herramienta utilizada: Claude
+Objetivo: revisar estilos CSS, contraste visual y consistencia de componentes frontend.
+
+Prompt representativo:
+Analiza este HTML y CSS de un modulo administrativo. Indica problemas de espaciado, jerarquia visual, consistencia de botones, tablas y formularios. Propon cambios puntuales sin alterar la estructura general del componente.
+
+Resultado obtenido:
+La IA permitio identificar ajustes rapidos de presentacion, mejorar consistencia visual y detectar detalles de estilo que afectaban la claridad de algunos modulos.
+
+Ajuste manual realizado:
+La aplicacion final de estilos, validacion visual real y decisiones de UI se hicieron manualmente sobre los componentes implementados.
+
+### Evaluacion critica del uso de IA
+
+La IA fue util como apoyo para acelerar documentacion, detectar inconsistencias entre entregables, proponer estructuras iniciales de codigo, sugerir una base para el modelo de datos y servir como punto de partida para la infraestructura Docker y ajustes visuales del frontend.
+
+Su mayor aporte estuvo en la velocidad de analisis, organizacion tecnica y construccion inicial de artefactos repetitivos. Tambien ayudo a reducir tiempo en tareas de contraste documental y en la preparacion de estructuras base sobre las cuales se trabajo posteriormente de forma manual.
+
+Sin embargo, la IA no reemplazo la validacion tecnica del proyecto. Fue necesario ajustar manualmente aspectos criticos como:
 
 * reglas de negocio finales
 * permisos por rol
 * relaciones definitivas del modelo de datos
 * validaciones operativas de compras, ventas y transferencias
-* decisiones finales de diseño y comportamiento real del sistema
+* comportamiento real de inventario por sucursal
+* decisiones finales de diseno, arquitectura y experiencia de usuario
 
-La IA aportó velocidad y apoyo estructural, pero la validación final y los ajustes críticos del proyecto se realizaron manualmente.
+La IA fue un acelerador del proceso, pero las decisiones finales del proyecto, la correccion del comportamiento funcional y la consistencia entre implementacion y documentacion se resolvieron manualmente.
 
-### Estimación de asistencia de IA
+### Limitaciones observadas en el uso de IA
 
-Estimación aproximada del apoyo de IA en el proyecto:
+Durante el desarrollo se identificaron algunos limites claros en el apoyo de IA:
 
-* **coherencia documental y organización técnica:** 30%
-* **estructuras repetitivas de código y soporte de implementación:** 60%
-* **estructura inicial del modelo de base de datos e infraestructura Docker:** 30%
-* **validación visual rápida y estilos CSS:** 10%
+* en varios casos propuso estructuras correctas a nivel general, pero no completamente alineadas con las reglas especificas de la prueba
+* algunas relaciones o permisos sugeridos debieron corregirse para ajustarse al flujo real del sistema
+* las respuestas utiles requerian validacion constante para evitar inconsistencias entre documentacion, backend y modelo de datos
+* en frontend, varias sugerencias servian como guia, pero necesitaban revision visual real antes de aplicarse
 
-## Historias de usuario representativas
+### Estimacion de asistencia de IA
 
-* Como operador de inventario, quiero registrar ingresos de productos con su precio de compra para mantener actualizado el costo promedio del inventario.
-* Como administrador de sucursal, quiero consultar indicadores de ventas e inventario para tomar decisiones de abastecimiento.
-* Como operario de inventario, quiero solicitar transferencias entre sucursales para cubrir faltantes de producto en mi sede.
+Estimacion aproximada del apoyo de IA en el proyecto:
 
-## Estado del proyecto
+* coherencia documental y organizacion tecnica: 30 %
+* estructuras repetitivas de codigo y soporte de implementacion: 60 %
+* estructura inicial del modelo de base de datos e infraestructura Docker: 30 %
+* validacion visual rapida y estilos CSS: 10 %
 
-Proyecto estructurado para ejecutarse con Docker Compose, con separación de capas, autenticación por roles, módulos principales del dominio y documentación alineada con los entregables solicitados en la prueba técnica.
-
-```
-```
+En terminos globales, la asistencia de IA se utilizo principalmente como apoyo de aceleracion y validacion, pero no sustituyo la toma de decisiones ni el ajuste manual de la solucion final.
